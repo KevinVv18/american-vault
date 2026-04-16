@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Catalogo de carteras importadas — American Vault",
   "scripts": {
+    "build": "node scripts/build-static.mjs",
     "seed": "node scripts/seed.mjs",
     "seed:dry": "node scripts/seed.mjs --dry-run"
   },
