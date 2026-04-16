@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catalogo de Carteras | American Vault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="ambient-shape ambient-one" aria-hidden="true"></div>
+  <div class="ambient-shape ambient-two" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand-shell">
+      <img class="brand-logo" src="AV%20LOGO/1.png" alt="Logo de American Vault" />
+      <div class="topbar-title">
+        <p class="eyebrow">American Vault</p>
+        <p class="brand-subtitle">Reventa de importaciones</p>
+        <h1>Catalogo de Carteras</h1>
+      </div>
+    </div>
+    <button id="lockButton" class="lock-button locked" type="button" aria-label="Abrir modo edicion">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V6Zm2 9a1.5 1.5 0 0 1-.5-2.92V11a.5.5 0 1 1 1 0v1.08A1.5 1.5 0 0 1 12 15Z"
+        />
+      </svg>
+      <span id="lockText">Bloqueado</span>
+    </button>
+  </header>
+
+  <p id="passwordNotice" class="password-notice hidden"></p>
+
+  <main class="layout">
+    <aside class="side-column">
+      <section class="controls card">
+        <h2>Busqueda y Filtros</h2>
+        <div class="search-group">
+          <label for="searchInput">Buscar</label>
+          <input id="searchInput" type="search" placeholder="Nombre, marca o color" />
+        </div>
+
+        <div class="filter-row">
+          <div class="field">
+            <label for="brandFilter">Marca</label>
+            <select id="brandFilter">
+              <option value="all">Todas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="colorFilter">Color</label>
+            <select id="colorFilter">
+              <option value="all">Todos</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="minPriceFilter">Precio min (S/)</label>
+            <input id="minPriceFilter" type="number" min="0" step="1" placeholder="0" />
+          </div>
+          <div class="field">
+            <label for="maxPriceFilter">Precio max (S/)</label>
+            <input id="maxPriceFilter" type="number" min="0" step="1" placeholder="500" />
+          </div>
+          <div class="field">
+            <label for="stockFilter">Estado</label>
+            <select id="stockFilter">
+              <option value="all">Todos</option>
+              <option value="available">Disponibles</option>
+              <option value="out">Agotados</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button id="clearFiltersButton" class="secondary" type="button">Limpiar filtros</button>
+        </div>
+      </section>
+
+      <section id="adminPanel" class="admin-panel card hidden">
+        <div class="admin-head">
+          <h2>Panel de Edicion</h2>
+          <p id="adminSummary">0 articulos</p>
+        </div>
+
+        <form id="productForm" class="product-form">
+          <h3>Agregar articulo</h3>
+          <div class="form-grid">
+            <div class="field">
+              <label for="newName">Nombre</label>
+              <input id="newName" name="name" type="text" required />
+            </div>
+            <div class="field">
+              <label for="newBrand">Marca</label>
+              <input id="newBrand" name="brand" type="text" required />
+            </div>
+            <div class="field">
+              <label for="newColor">Color</label>
+              <input id="newColor" name="color" type="text" required />
+            </div>
+            <div class="field">
+              <label for="newPrice">Precio (S/)</label>
+              <input id="newPrice" name="price" type="number" min="0" step="0.01" required />
+            </div>
+            <div class="field">
+              <label for="newStock">Unidades</label>
+              <input id="newStock" name="stock" type="number" min="0" step="1" required />
+            </div>
+            <div class="field">
+              <label for="newImageFile">Imagen (archivo)</label>
+              <input id="newImageFile" name="imageFile" type="file" accept="image/*" />
+            </div>
+            <div class="field">
+              <label for="newImageUrl">o Imagen (URL)</label>
+              <input id="newImageUrl" name="imageUrl" type="url" placeholder="https://..." />
+            </div>
+          </div>
+          <button type="submit">Guardar nueva cartera</button>
+        </form>
+
+        <div class="admin-actions">
+          <button id="signOutButton" class="secondary" type="button">Cerrar sesion</button>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Marca</th>
+                <th>Color</th>
+                <th>Precio</th>
+                <th>Unidades</th>
+                <th>Disponible</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="adminTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </aside>
+
+    <section class="catalog-column">
+      <section class="stats card">
+        <h2>Inventario Visible</h2>
+        <p id="statsLine">Cargando catalogo...</p>
+      </section>
+
+      <section id="catalogGrid" class="catalog-grid" aria-live="polite"></section>
+    </section>
+  </main>
+
+  <footer class="footnote">
+    <p id="lastUpdated">Sin actualizaciones aun.</p>
+  </footer>
+
+  <div id="passwordModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
+    <div class="modal-card">
+      <h3 id="passwordModalTitle">Entrar a modo edicion</h3>
+      <p>Ingresa tu correo y contrasena de administrador.</p>
+      <form id="passwordForm">
+        <label for="emailInput">Correo</label>
+        <input id="emailInput" type="email" autocomplete="email" required />
+
+        <label for="passwordInput">Contrasena</label>
+        <input id="passwordInput" type="password" autocomplete="current-password" required />
+
+        <p id="passwordMessage" class="form-message"></p>
+        <div class="modal-actions">
+          <button type="submit">Entrar</button>
+          <button id="cancelPasswordButton" class="secondary" type="button">Cancelar</button>
+        </div>
+        <div class="modal-footer-row">
+          <button id="magicLinkButton" class="link-button" type="button">
+            Prefiero recibir un enlace magico por correo
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

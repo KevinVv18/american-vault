@@ -1,0 +1,52 @@
+name: Deploy to Hostinger
+
+# Despliega el sitio estatico al hosting por FTP cuando hay push a main.
+#
+# Secrets requeridos en GitHub (Settings > Secrets and variables > Actions):
+#   FTP_SERVER       ej. "ftp.american-vault.com", "files.000webhost.com",
+#                    o la IP/host que muestra Hostinger en FTP Accounts.
+#   FTP_USERNAME     usuario FTP
+#   FTP_PASSWORD     contrasena FTP
+#   FTP_SERVER_DIR   ruta remota, ej. "/public_html/" o
+#                    "/domains/american-vault.com/public_html/"
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-hostinger-american-vault
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: FTP Deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}
+          # No subir al hosting nada que no sea el sitio publico.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.github/**
+            **/.claude/**
+            **/scripts/**
+            **/supabase/**
+            **/referencias/**
+            **/carteras/**
+            .env
+            .env.*
+            package.json
+            package-lock.json
+            README.md
+            temp_blog_html.txt

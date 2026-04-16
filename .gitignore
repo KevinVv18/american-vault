@@ -1,0 +1,25 @@
+# Secrets — NUNCA commitear
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Build / temp
+dist/
+.cache/
+*.log
+
+# Backups locales del catalogo v1
+catalogo-carteras-*.json
