@@ -29,7 +29,6 @@
       </div>
 
       <a href="/" class="wordmark" aria-label="American Vault inicio">
-        <img class="wordmark-mark" src="AV%20LOGO/1.png" alt="" />
         American Vault
       </a>
 
@@ -39,10 +38,11 @@
             <path d="M20.52 3.48A11.94 11.94 0 0 0 12.06 0C5.5 0 .14 5.35.14 11.91c0 2.1.55 4.15 1.6 5.96L0 24l6.3-1.66a11.92 11.92 0 0 0 5.76 1.47h.01c6.56 0 11.9-5.35 11.9-11.91 0-3.18-1.24-6.17-3.45-8.42ZM12.07 21.6h-.01a9.66 9.66 0 0 1-4.93-1.35l-.35-.21-3.74.98 1-3.64-.23-.37a9.58 9.58 0 0 1-1.48-5.1c0-5.32 4.34-9.66 9.67-9.66 2.58 0 5.01 1.01 6.84 2.84a9.6 9.6 0 0 1 2.83 6.84c0 5.32-4.33 9.67-9.6 9.67Zm5.32-7.24c-.29-.14-1.73-.85-2-.95-.27-.1-.47-.14-.66.14-.19.29-.76.95-.93 1.14-.17.19-.34.21-.63.07-.29-.14-1.23-.45-2.35-1.45-.87-.77-1.45-1.73-1.62-2.02-.17-.29-.02-.45.13-.59.13-.13.29-.34.43-.51.14-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.14-.66-1.6-.91-2.19-.24-.58-.49-.5-.66-.51h-.57c-.19 0-.5.07-.76.36-.26.29-1 .98-1 2.39s1.02 2.77 1.17 2.96c.14.19 2.01 3.07 4.88 4.3.68.29 1.21.47 1.62.6.68.22 1.3.19 1.79.12.55-.08 1.73-.71 1.97-1.39.24-.68.24-1.27.17-1.39-.07-.12-.27-.19-.56-.34Z"/>
           </svg>
         </a>
-        <button id="wishlistTopBtn" class="icon-btn" type="button" aria-label="Wishlist">
+        <button id="wishlistTopBtn" class="icon-btn wishlist-top" type="button" aria-label="Ver wishlist" aria-pressed="false">
           <svg viewBox="0 0 24 24" aria-hidden="true" style="fill: transparent; stroke: currentColor; stroke-width: 2;">
             <path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6C19 16.5 12 21 12 21Z"/>
           </svg>
+          <span id="wishlistTopCount" class="count-bubble hidden">0</span>
         </button>
       </div>
     </div>
@@ -145,58 +145,87 @@
       </div>
     </header>
 
-    <form id="productForm" class="product-form">
-      <h3>Agregar articulo</h3>
-      <div class="form-grid">
-        <div class="field">
-          <label for="newName">Nombre</label>
-          <input id="newName" name="name" type="text" required />
-        </div>
-        <div class="field">
-          <label for="newBrand">Marca</label>
-          <input id="newBrand" name="brand" type="text" required />
-        </div>
-        <div class="field">
-          <label for="newColor">Color</label>
-          <input id="newColor" name="color" type="text" required />
-        </div>
-        <div class="field">
-          <label for="newPrice">Precio (S/)</label>
-          <input id="newPrice" name="price" type="number" min="0" step="0.01" required />
-        </div>
-        <div class="field">
-          <label for="newStock">Unidades</label>
-          <input id="newStock" name="stock" type="number" min="0" step="1" required />
-        </div>
-        <div class="field">
-          <label for="newImageFile">Imagen (archivo)</label>
-          <input id="newImageFile" name="imageFile" type="file" accept="image/*" />
-        </div>
-        <div class="field">
-          <label for="newImageUrl">o Imagen (URL)</label>
-          <input id="newImageUrl" name="imageUrl" type="url" placeholder="https://..." />
-        </div>
-      </div>
-      <div class="submit-row">
-        <button type="submit" class="btn btn-primary">Guardar cartera</button>
-      </div>
-    </form>
+    <!-- Tabs: Catalogo / Wishlist -->
+    <nav class="admin-tabs" role="tablist" aria-label="Vistas de administracion">
+      <button id="adminTabCatalog" class="admin-tab is-active" type="button" role="tab" aria-selected="true" data-view="catalog">
+        Catalogo
+        <span id="adminTabCatalogCount" class="tab-count">0</span>
+      </button>
+      <button id="adminTabWishlist" class="admin-tab" type="button" role="tab" aria-selected="false" data-view="wishlist">
+        Wishlist
+        <span id="adminTabWishlistCount" class="tab-count">0</span>
+      </button>
+    </nav>
 
-    <div class="admin-table-wrap">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Marca</th>
-            <th>Color</th>
-            <th>Precio</th>
-            <th>Unidades</th>
-            <th>Disp.</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="adminTableBody"></tbody>
-      </table>
+    <!-- Vista: Catalogo -->
+    <div id="adminViewCatalog" class="admin-view is-active" role="tabpanel" aria-labelledby="adminTabCatalog">
+      <form id="productForm" class="product-form">
+        <h3>Agregar articulo</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label for="newName">Nombre</label>
+            <input id="newName" name="name" type="text" required />
+          </div>
+          <div class="field">
+            <label for="newBrand">Marca</label>
+            <input id="newBrand" name="brand" type="text" required />
+          </div>
+          <div class="field">
+            <label for="newColor">Color</label>
+            <input id="newColor" name="color" type="text" required />
+          </div>
+          <div class="field">
+            <label for="newPrice">Precio (S/)</label>
+            <input id="newPrice" name="price" type="number" min="0" step="0.01" required />
+          </div>
+          <div class="field">
+            <label for="newStock">Unidades</label>
+            <input id="newStock" name="stock" type="number" min="0" step="1" required />
+          </div>
+          <div class="field">
+            <label for="newImageFile">Imagen (archivo)</label>
+            <input id="newImageFile" name="imageFile" type="file" accept="image/*" />
+          </div>
+          <div class="field">
+            <label for="newImageUrl">o Imagen (URL)</label>
+            <input id="newImageUrl" name="imageUrl" type="url" placeholder="https://..." />
+          </div>
+        </div>
+        <div class="submit-row">
+          <button type="submit" class="btn btn-primary">Guardar cartera</button>
+        </div>
+      </form>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Marca</th>
+              <th>Color</th>
+              <th>Precio</th>
+              <th>Unidades</th>
+              <th>Disp.</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="adminTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Vista: Wishlist (pedidos pendientes de clientes) -->
+    <div id="adminViewWishlist" class="admin-view" role="tabpanel" aria-labelledby="adminTabWishlist" hidden>
+      <div class="admin-wishlist-head">
+        <p class="muted">Avisos guardados por clientes esperando que llegue una cartera.</p>
+        <label class="inline-check">
+          <input id="wishlistShowNotified" type="checkbox" />
+          <span>Mostrar ya avisados</span>
+        </label>
+      </div>
+      <div id="wishlistList" class="wishlist-list">
+        <p class="muted">Cargando avisos...</p>
+      </div>
     </div>
   </section>
 
@@ -232,6 +261,67 @@
       </form>
     </div>
   </div>
+
+  <!-- 10. NOTIFY-ME MODAL (cliente pide aviso cuando llegue) --- -->
+  <div id="notifyModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="notifyModalTitle">
+    <div class="modal-card">
+      <h3 id="notifyModalTitle">Avisame cuando llegue</h3>
+      <p>Dejanos tu WhatsApp y te escribimos en cuanto llegue una cartera que coincida.</p>
+
+      <div id="notifyProductSummary" class="notify-product-card hidden">
+        <img id="notifyProductImg" src="" alt="" />
+        <div class="meta">
+          <strong id="notifyProductName"></strong>
+          <span id="notifyProductBrand"></span>
+          <span id="notifyProductPrice"></span>
+        </div>
+      </div>
+
+      <form id="notifyForm">
+        <div class="field">
+          <label for="notifyWhatsapp">WhatsApp</label>
+          <input id="notifyWhatsapp" type="tel" required placeholder="+51 9XX XXX XXX" autocomplete="tel" />
+        </div>
+        <div class="field">
+          <label for="notifyBrandHint">Marca preferida (opcional)</label>
+          <input id="notifyBrandHint" type="text" placeholder="Ej. Guess, Michael Kors..." />
+        </div>
+        <div class="field">
+          <label for="notifyMaxPrice">Precio maximo en S/ (opcional)</label>
+          <input id="notifyMaxPrice" type="number" min="0" step="1" placeholder="Ej. 300" />
+        </div>
+        <div class="field">
+          <label for="notifyNotes">Notas (opcional)</label>
+          <input id="notifyNotes" type="text" placeholder="Color, tamano, estilo..." />
+        </div>
+        <p id="notifyMessage" class="form-message"></p>
+        <div class="modal-actions">
+          <button id="cancelNotifyButton" class="btn btn-ghost" type="button">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Enviar aviso</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 11. WISHLIST DRAWER (usuario final, guardados localmente) -->
+  <div id="wishlistScrim" class="drawer-scrim" aria-hidden="true"></div>
+  <aside id="wishlistDrawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="wishlistDrawerTitle" aria-hidden="true">
+    <div class="drawer-head">
+      <h2 id="wishlistDrawerTitle">Tu wishlist</h2>
+      <button id="closeWishlistBtn" class="icon-btn" type="button" aria-label="Cerrar wishlist">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body">
+      <div id="wishlistClientList" class="wishlist-client-list">
+        <p class="muted">Tu wishlist esta vacia. Toca el corazon en cualquier cartera para guardarla aqui.</p>
+      </div>
+    </div>
+    <div class="drawer-foot">
+      <button id="wishlistClearBtn" class="btn btn-ghost" type="button">Vaciar</button>
+      <button id="wishlistWhatsappBtn" class="btn btn-primary" type="button">Pedir todas por WhatsApp</button>
+    </div>
+  </aside>
 
   <script type="module" src="app.js"></script>
 </body>
