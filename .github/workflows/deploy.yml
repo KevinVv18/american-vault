@@ -1,14 +1,15 @@
 name: Deploy to Hostinger
 
-# Despliega el sitio estatico al hosting por FTP cuando hay push a main.
+# Despliega el sitio estatico al hosting por SSH + rsync cuando hay push a main.
+# Misma estrategia que DAK_WP (probada, rapida, confiable).
 #
-# Secrets requeridos en GitHub (Settings > Secrets and variables > Actions):
-#   FTP_SERVER       ej. "ftp.american-vault.com", "files.000webhost.com",
-#                    o la IP/host que muestra Hostinger en FTP Accounts.
-#   FTP_USERNAME     usuario FTP
-#   FTP_PASSWORD     contrasena FTP
-#   FTP_SERVER_DIR   ruta remota, ej. "/public_html/" o
-#                    "/domains/american-vault.com/public_html/"
+# Secret requerido en GitHub (Settings > Secrets and variables > Actions):
+#   SSH_PRIVATE_KEY   contenido completo de la llave privada ed25519 cuya
+#                     publica esta registrada en Hostinger > SSH Access > SSH keys.
+#                     Incluir las lineas BEGIN/END OPENSSH PRIVATE KEY.
+#
+# Ruta remota FIJA: /home/u567580447/domains/american-vault.com/public_html/
+# NO tocar /home/u567580447/public_html/ ni .../domains/dakagency.net/ (son DAK).
 
 on:
   push:
@@ -26,27 +27,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: FTP Deploy
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy via SSH (rsync)
+        uses: burnett01/rsync-deployments@7.0.1
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: ${{ secrets.FTP_SERVER_DIR }}
-          # No subir al hosting nada que no sea el sitio publico.
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/.github/**
-            **/.claude/**
-            **/scripts/**
-            **/supabase/**
-            **/referencias/**
-            **/carteras/**
-            .env
-            .env.*
-            package.json
-            package-lock.json
-            README.md
-            temp_blog_html.txt
+          # -a archivo, -v verbose, -z compresion, --delete limpia lo que no
+          # este en el repo (la carpeta remota es solo para American Vault).
+          switches: >-
+            -avz --delete
+            --exclude=.git/
+            --exclude=.github/
+            --exclude=.claude/
+            --exclude=node_modules/
+            --exclude=scripts/
+            --exclude=supabase/
+            --exclude=referencias/
+            --exclude=carteras/
+            --exclude=dist/
+            --exclude=.env
+            --exclude=.env.*
+            --exclude=package.json
+            --exclude=package-lock.json
+            --exclude=README.md
+            --exclude=.gitignore
+            --exclude=temp_blog_html.txt
+          path: ./
+          remote_path: /home/u567580447/domains/american-vault.com/public_html/
+          remote_host: 89.116.115.11
+          remote_port: 65002
+          remote_user: u567580447
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
