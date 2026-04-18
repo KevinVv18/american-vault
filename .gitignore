@@ -26,9 +26,9 @@ catalogo-carteras-*.json
 
 # Archivos 3D fuente (pesados, no van al repo ni al deploy)
 3D/
-*.fbx
 *.blend
 *.blend1
-*.obj
-*.glb
-*.gltf
+
+# Re-incluir assets 3D optimizados para produccion (hero 3D del sitio)
+!assets/3d/
+!assets/3d/**
