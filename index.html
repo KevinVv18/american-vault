@@ -18,7 +18,10 @@
 <body>
 
   <!-- 1. TOPBAR ------------------------------------------------ -->
-  <header class="topbar">
+  <!-- is-over-dark por default: el primer fold es el hero negro. hero.js lo
+       quita cuando el scroll pasa la zona oscura del gradiente. Asi no hay
+       flash blanco en el primer paint ni al volver a scroll=0. -->
+  <header class="topbar is-over-dark">
     <div class="topbar-inner">
       <div class="topbar-left">
         <button id="lockButton" class="icon-btn lock-btn" type="button" aria-pressed="false" aria-label="Abrir modo edicion">

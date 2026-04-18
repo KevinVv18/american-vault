@@ -61,6 +61,27 @@ if (hero && bagSvg) {
     const hint = hero.querySelector('.hero-scroll-hint');
     if (hint) hint.style.opacity = String(Math.max(0, 1 - p * 2.2));
 
+    // ---- topbar dark/light sync con el gradiente del hero ----
+    // BUG PREVIO: usabamos IntersectionObserver con threshold 0.35 sobre un
+    // hero de 200vh. El ratio empieza en ~0.5 (100vh visible / 200vh total)
+    // y cae bajo 0.35 a scroll=130vh, pero visualmente el pixel detras del
+    // topbar todavia esta pintado negro hasta ~scroll=148vh (stop #1e1e1e
+    // del gradiente). Resultado: topbar se ponia blanco sobre fondo aun
+    // oscuro. Ademas, IO es asincrono — en ciertos paths (restore scroll,
+    // refresh, scroll-up forzado) el primer callback llegaba tarde y se veia
+    // un flash blanco sobre el primer fold negro.
+    //
+    // FIX: calculamos la fraccion exacta del hero que queda sobre el topbar
+    // (hero y=0 esta en -rect.top en coords del hero) y la comparamos contra
+    // el stop donde el gradiente deja de leerse como negro (~0.72). Sync
+    // con el scroll, cero async, cero flash.
+    if (topbar) {
+      const heroStillCovers = rect.bottom > 0 && rect.top < window.innerHeight;
+      const topFrac = rect.height > 0 ? (-rect.top) / rect.height : 0;
+      const overDark = heroStillCovers && topFrac < 0.72;
+      topbar.classList.toggle('is-over-dark', overDark);
+    }
+
     // Empuja el nuevo frame 3D si esta listo
     if (state.render3D) state.render3D(p);
   }
@@ -68,17 +89,6 @@ if (hero && bagSvg) {
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', update,   { passive: true });
   update();
-
-  // ---- topbar invertido mientras el hero esta visible ----
-  if (topbar) {
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        const overDark = e.isIntersecting && e.intersectionRatio > 0.35;
-        topbar.classList.toggle('is-over-dark', overDark);
-      }
-    }, { threshold: [0, 0.2, 0.35, 0.6, 0.85, 1] });
-    io.observe(hero);
-  }
 
   // ---- Upgrade a 3D (lazy, no bloquea la primera pintura) ----
   // Lo lanzamos solo cuando:
