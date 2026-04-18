@@ -1,0 +1,12 @@
+Modelo 3D: Black Handbag (PBR)
+Fuente: www.animatedheaven.weebly.com
+Formato original: Blender 3.5 / FBX / OBJ
+Texturas: Base Color + Normal + Metallic + Roughness (Substance Painter)
+Poly Count: 52,138 / Vertex Count: 52,210
+
+Licencia: "Can be used commercially with credits. Content not for redistribution."
+
+Uso en este proyecto:
+- FBX convertido y cargado via three.js FBXLoader.
+- Texturas optimizadas de PNG 2K a WebP 1024 (ffmpeg libwebp quality 82).
+- Se conserva este aviso junto al modelo; el credito visible aparece en la pagina donde se muestra el hero.

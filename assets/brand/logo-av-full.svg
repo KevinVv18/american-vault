@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  American Vault — lockup completo (monograma + wordmark).
+  El wordmark se entrega como <text> con font-family en cadena para que el
+  navegador caiga en una sans geometrica disponible. Si se necesita lockup
+  100% vectorial (sin font fallback), convertir el <text> a <path> con un
+  tool como svgomg/svgo flatten-text.
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 240 300"
+     fill="none"
+     role="img"
+     aria-label="American Vault">
+  <g stroke="currentColor" stroke-width="5.3" stroke-linecap="square" stroke-linejoin="miter">
+    <line x1="60"  y1="24"  x2="180" y2="216"/>
+    <line x1="180" y1="24"  x2="60"  y2="216"/>
+    <line x1="93"  y1="163" x2="147" y2="163"/>
+  </g>
+  <text x="120" y="272"
+        text-anchor="middle"
+        fill="currentColor"
+        stroke="none"
+        font-family="'Jost', 'Montserrat', 'Helvetica Neue', system-ui, sans-serif"
+        font-weight="300"
+        font-size="22"
+        letter-spacing="6">AMERICAN VAULT</text>
+</svg>

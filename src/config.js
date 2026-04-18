@@ -4,8 +4,9 @@
 export const SUPABASE_URL = 'https://acmllkuqsxukxevunzei.supabase.co';
 export const SUPABASE_ANON_KEY = 'sb_publishable_ZaaJ9_slQk3abAdC_pRnUA_NU7Kxtby';
 
-export const WHATSAPP_NUMBER = '51906765040';
+export const WHATSAPP_NUMBER = '51998251375';
 export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`;
 
-export const FALLBACK_IMAGE =
-  'https://dummyimage.com/600x750/e5dccf/2f2317&text=Cartera';
+// Imagen que se muestra si un producto no tiene ni stock ni casera.
+// Vive en el repo bajo /stock/default-bag.jpg (editorial neutra).
+export const FALLBACK_IMAGE = 'stock/default-bag.jpg';

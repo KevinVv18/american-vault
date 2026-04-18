@@ -39,13 +39,15 @@
 html, body { margin: 0; min-height: 100%; }
 
 body {
-  font-family: "Space Grotesk", "Inter", -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
+  font-family: "Jost", "Inter", -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
   font-size: 15px;
+  font-weight: 400;
   color: var(--ink);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
 }
 
 h1, h2, h3, h4 {
@@ -92,10 +94,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .topbar-right { justify-self: end;   display: flex; gap: 6px; align-items: center; }
 
 .wordmark {
-  font-family: "Space Grotesk", -apple-system, sans-serif;
+  font-family: "Jost", -apple-system, sans-serif;
   font-size: clamp(0.95rem, 1.35vw, 1.12rem);
-  font-weight: 600;
-  letter-spacing: 0.28em;
+  font-weight: 300;
+  letter-spacing: 0.34em;
   text-transform: uppercase;
   color: var(--ink);
   text-decoration: none;
@@ -151,6 +153,170 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .icon-btn .count-bubble:empty,
 .icon-btn .count-bubble.hidden { display: none; }
+
+/* ===========================================================
+   1b. HERO VAULT — scrollytelling mobile-first
+   =========================================================== */
+.hero-vault {
+  position: relative;
+  height: 200vh;                /* 2 pantallas de scroll para pasar el giro */
+  /* Gradiente radial sutil: centro gris muy oscuro, bordes negros puros.
+     Da profundidad al bag negro-sobre-negro sin llegar a verse como fondo
+     gris — lee como "sombra vignette" en dark mode. */
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 45%, #151515 0%, #050505 55%, #000 100%);
+  color: #fff;
+  margin-top: -1px;             /* tapa el border-bottom del topbar sobre el negro */
+}
+/* Fade-out al siguiente bloque: despues de que el sticky libera, las
+   ultimas ~80vh del hero transicionan de negro a blanco (bg del body).
+   Asi no hay corte visible entre hero oscuro y catalogo claro. */
+.hero-vault::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 120vh;                   /* empieza despues del sticky (100vh) + margen */
+  height: 80vh;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, var(--bg) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+.hero-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-items: center;
+  gap: 18px;
+  padding: clamp(80px, 13vh, 120px) 24px clamp(28px, 6vh, 48px);
+  overflow: hidden;
+  perspective: 1400px;
+  perspective-origin: 50% 55%;
+  /* z-index superior al ::after del fade — el sticky vive encima */
+  z-index: 2;
+}
+
+.hero-top {
+  display: flex;
+  justify-content: center;
+  opacity: 0.95;
+}
+.hero-logo {
+  width: clamp(56px, 12vw, 84px);
+  height: auto;
+  display: block;
+  /* El SVG hereda currentColor: blanco aqui porque el hero tiene color:#fff */
+  color: #fff;
+  opacity: 0.92;
+}
+
+.hero-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  width: 100%;
+  /* el canvas se posiciona absoluto encima y ocupa el stage completo */
+}
+.hero-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.hero-stage.hero-has-3d .hero-canvas { opacity: 1; }
+.hero-stage.hero-has-3d .hero-bag    { opacity: 0; visibility: hidden; }
+
+.hero-bag {
+  width: clamp(190px, 58vw, 340px);
+  aspect-ratio: 300 / 360;
+  color: #ffffff;
+  transform-style: preserve-3d;
+  will-change: transform;
+  backface-visibility: visible;
+  filter: drop-shadow(0 24px 40px rgba(255, 255, 255, 0.05));
+  transition: opacity 0.5s ease;
+}
+.hero-bag svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hero-foot {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+  padding-bottom: 4px;
+}
+.hero-wordmark {
+  margin: 0;
+  font-family: "Jost", sans-serif;
+  font-weight: 300;
+  letter-spacing: 0.42em;
+  font-size: clamp(1rem, 3.4vw, 1.35rem);
+  text-transform: uppercase;
+  color: #fff;
+}
+.hero-tagline {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: clamp(0.78rem, 2.4vw, 0.9rem);
+  letter-spacing: 0.02em;
+  max-width: 340px;
+  line-height: 1.4;
+}
+.hero-scroll-hint {
+  margin-top: 18px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: "Jost", sans-serif;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.66rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  transition: opacity 0.25s ease;
+}
+.hero-scroll-hint svg {
+  opacity: 0.8;
+  animation: heroScrollBob 2.2s ease-in-out infinite;
+}
+@keyframes heroScrollBob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(5px); }
+}
+
+/* Topbar invertido cuando el hero ocupa la vista */
+.topbar.is-over-dark {
+  background: rgba(0, 0, 0, 0.18);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.topbar.is-over-dark .wordmark,
+.topbar.is-over-dark .icon-btn { color: #fff; }
+.topbar.is-over-dark .icon-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.topbar.is-over-dark .icon-btn.lock-btn[aria-pressed="true"] {
+  background: #fff; color: #000;
+}
+.topbar.is-over-dark .count-bubble {
+  background: #fff; color: #000;
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-vault { height: 100vh; }
+  .hero-bag   { transform: rotateY(16deg); }
+  .hero-scroll-hint { animation: none; }
+}
 
 /* ===========================================================
    2. PAGE HEADER
@@ -516,7 +682,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .filter-group { display: grid; gap: 10px; }
 .filter-group h3 {
-  font-family: "Space Grotesk", sans-serif;
+  font-family: "Jost", sans-serif;
   font-size: 0.72rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -911,6 +1077,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--ink-mute);
   font-size: 0.8rem;
   text-align: center;
+}
+.footnote p { margin: 4px 0; }
+.footnote .credits {
+  font-size: 0.72rem;
+  opacity: 0.75;
+  letter-spacing: 0.02em;
+}
+.footnote .credits a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
 }
 
 /* ===========================================================

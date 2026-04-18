@@ -23,3 +23,12 @@ dist/
 
 # Backups locales del catalogo v1
 catalogo-carteras-*.json
+
+# Archivos 3D fuente (pesados, no van al repo ni al deploy)
+3D/
+*.fbx
+*.blend
+*.blend1
+*.obj
+*.glb
+*.gltf

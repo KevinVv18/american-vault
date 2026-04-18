@@ -18,8 +18,9 @@ create table if not exists public.products (
   available     boolean not null default true,
   status        text not null default 'available'
                   check (status in ('available','reserved','sold_out')),
-  image_url     text,
-  image_path    text,                 -- ruta dentro del bucket 'carteras'
+  image_url         text,             -- foto "casera" (bucket 'carteras')
+  image_path        text,             -- ruta dentro del bucket 'carteras'
+  stock_image_url   text,             -- foto editorial/stock (principal). Fallback: image_url
   source_file   text unique,          -- nombre original (evita duplicados en seed)
   notes         text,
   created_at    timestamptz not null default now(),

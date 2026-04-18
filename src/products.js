@@ -4,34 +4,44 @@ import { FALLBACK_IMAGE } from './config.js';
 // ---------- Mapeo DB <-> UI ----------
 // La tabla usa snake_case, la UI sigue usando camelCase para no romper codigo.
 function fromRow(row) {
+  const stock = row.stock_image_url || '';
+  const home  = row.image_url || '';
+  // primary: stock editorial si existe, sino la casera, sino el fallback.
+  // secondary: la casera cuando primary es stock (si no, null).
+  const primary   = stock || home || FALLBACK_IMAGE;
+  const secondary = stock && home ? home : null;
   return {
-    id:          row.id,
-    name:        row.name ?? '',
-    brand:       row.brand ?? 'Sin marca',
-    color:       row.color ?? 'Variado',
-    price:       Number(row.price ?? 0),
-    stock:       Number(row.stock ?? 0),
-    available:   Boolean(row.available),
-    status:      row.status ?? 'available',
-    imageUrl:    row.image_url || FALLBACK_IMAGE,
-    imagePath:   row.image_path ?? null,
-    sourceFile:  row.source_file ?? null,
-    createdAt:   row.created_at,
-    lastUpdated: row.updated_at
+    id:            row.id,
+    name:          row.name ?? '',
+    brand:         row.brand ?? 'Sin marca',
+    color:         row.color ?? 'Variado',
+    price:         Number(row.price ?? 0),
+    stock:         Number(row.stock ?? 0),
+    available:     Boolean(row.available),
+    status:        row.status ?? 'available',
+    imageUrl:      primary,                // primera (la que ve el cliente)
+    secondaryUrl:  secondary,              // foto casera, para swipe/hover
+    stockImageUrl: row.stock_image_url ?? null,
+    homeImageUrl:  row.image_url ?? null,
+    imagePath:     row.image_path ?? null,
+    sourceFile:    row.source_file ?? null,
+    createdAt:     row.created_at,
+    lastUpdated:   row.updated_at
   };
 }
 
 function toRow(p) {
   const row = {};
-  if (p.name        !== undefined) row.name        = p.name;
-  if (p.brand       !== undefined) row.brand       = p.brand;
-  if (p.color       !== undefined) row.color       = p.color;
-  if (p.price       !== undefined) row.price       = p.price;
-  if (p.stock       !== undefined) row.stock       = p.stock;
-  if (p.available   !== undefined) row.available   = p.available;
-  if (p.status      !== undefined) row.status      = p.status;
-  if (p.imageUrl    !== undefined) row.image_url   = p.imageUrl;
-  if (p.imagePath   !== undefined) row.image_path  = p.imagePath;
+  if (p.name           !== undefined) row.name            = p.name;
+  if (p.brand          !== undefined) row.brand           = p.brand;
+  if (p.color          !== undefined) row.color           = p.color;
+  if (p.price          !== undefined) row.price           = p.price;
+  if (p.stock          !== undefined) row.stock           = p.stock;
+  if (p.available      !== undefined) row.available       = p.available;
+  if (p.status         !== undefined) row.status          = p.status;
+  if (p.homeImageUrl   !== undefined) row.image_url       = p.homeImageUrl;
+  if (p.imagePath      !== undefined) row.image_path      = p.imagePath;
+  if (p.stockImageUrl  !== undefined) row.stock_image_url = p.stockImageUrl;
   return row;
 }
 

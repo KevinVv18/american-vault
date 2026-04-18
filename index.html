@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Jost:wght@300;400;500;600;700&display=swap"
     rel="stylesheet"
   />
   <link rel="stylesheet" href="styles.css" />
@@ -48,10 +48,58 @@
     </div>
   </header>
 
-  <!-- 2. PAGE HEADER ------------------------------------------- -->
+  <!-- 2. HERO (mobile-first scrollytelling) -------------------- -->
+  <section class="hero-vault" id="heroVault" aria-label="Intro American Vault">
+    <div class="hero-sticky">
+      <div class="hero-top">
+        <!-- Logo AV monograma: inline para que currentColor herede blanco del hero -->
+        <svg class="hero-logo" viewBox="0 0 100 100" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="square" stroke-linejoin="miter"
+             aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <line x1="25" y1="10" x2="75" y2="90"/>
+          <line x1="75" y1="10" x2="25" y2="90"/>
+          <line x1="38.75" y1="68" x2="61.25" y2="68"/>
+        </svg>
+      </div>
+
+      <div class="hero-stage" id="heroStage">
+        <!-- canvas 3D: se activa cuando three.js carga la cartera real -->
+        <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
+
+        <!-- fallback SVG: se ve mientras three.js carga, o si falla, o con reduce-motion -->
+        <div class="hero-bag" id="heroBag" aria-hidden="true">
+          <svg viewBox="0 0 300 360" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor">
+            <!-- asa -->
+            <path d="M 100 112 C 100 56, 125 36, 150 36 C 175 36, 200 56, 200 112" stroke-width="1.5" stroke-linecap="round"/>
+            <!-- cuerpo -->
+            <path d="M 62 112 L 238 112 L 252 322 L 48 322 Z" stroke-width="1.5" stroke-linejoin="round"/>
+            <!-- solapa -->
+            <path d="M 72 112 L 72 200 L 228 200 L 228 112" stroke-width="1.2" stroke-linejoin="round" opacity="0.85"/>
+            <!-- cierre -->
+            <rect x="143" y="190" width="14" height="22" rx="1.5" stroke-width="1.2" opacity="0.9"/>
+            <!-- reflejo sutil bajo la cartera -->
+            <ellipse cx="150" cy="342" rx="96" ry="4" fill="currentColor" stroke="none" opacity="0.09"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="hero-foot">
+        <p class="hero-wordmark">American Vault</p>
+        <p class="hero-tagline">Reventa curada de carteras importadas desde USA</p>
+        <div class="hero-scroll-hint" aria-hidden="true">
+          <span>desliza</span>
+          <svg viewBox="0 0 12 22" width="10" height="18">
+            <path d="M6 1 v18 M1 14 L6 20 L11 14" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2b. CATALOGO HEADER (bajo hero) -------------------------- -->
   <section class="page-header">
-    <p class="tagline">Reventa de importaciones</p>
-    <h1>Catalogo de Carteras</h1>
+    <p class="tagline">El catalogo</p>
+    <h1>Carteras disponibles ahora</h1>
     <p id="pageCount" class="count">Cargando catalogo...</p>
   </section>
 
@@ -232,6 +280,7 @@
   <!-- 8. FOOTNOTE ---------------------------------------------- -->
   <footer class="footnote">
     <p id="lastUpdated">Sin actualizaciones aun.</p>
+    <p class="credits">Modelo 3D del hero: <a href="https://animatedheaven.weebly.com" target="_blank" rel="noopener noreferrer">animatedheaven</a>.</p>
   </footer>
 
   <!-- 9. LOGIN MODAL ------------------------------------------- -->
@@ -323,6 +372,17 @@
     </div>
   </aside>
 
+  <!-- Importmap para three.js (consumido por src/hero.js) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three":          "https://unpkg.com/three@0.160.1/build/three.module.js",
+      "three/addons/":  "https://unpkg.com/three@0.160.1/examples/jsm/"
+    }
+  }
+  </script>
+
   <script type="module" src="app.js"></script>
+  <script type="module" src="src/hero.js"></script>
 </body>
 </html>

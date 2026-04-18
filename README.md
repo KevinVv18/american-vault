@@ -72,13 +72,14 @@ Luego abre http://localhost:5174.
 
 ## Deploy
 
-El workflow usa FTP al hosting Hostinger.
+El workflow usa **SSH + rsync** a Hostinger (via GitHub Actions → `burnett01/rsync-deployments`).
 
-Secrets requeridos en GitHub (`Settings > Secrets and variables > Actions`):
+- **Host:** `89.116.115.11` — **Puerto:** `65002`
+- **Usuario:** `u567580447`
+- **Ruta remota:** `/home/u567580447/domains/american-vault.com/public_html/`
 
-- `FTP_SERVER` (ej. `ftp.american-vault.com` o el host/IP que da Hostinger)
-- `FTP_USERNAME`
-- `FTP_PASSWORD`
-- `FTP_SERVER_DIR` (ej. `/public_html/`)
+Secret requerido en GitHub (`Settings > Secrets and variables > Actions`):
 
-Push a `main` dispara el deploy. Tambien se puede ejecutar manualmente desde la pestana *Actions*.
+- `SSH_PRIVATE_KEY` — contenido completo de la llave privada ed25519 (incluyendo las líneas `BEGIN/END OPENSSH PRIVATE KEY`). La llave pública correspondiente debe estar registrada en Hostinger > SSH Access > SSH keys.
+
+Push a `main` dispara el deploy automaticamente. También se puede ejecutar manualmente desde la pestaña *Actions*.

@@ -1066,7 +1066,7 @@ async function addProduct() {
       name, brand, color, price, stock,
       available: stock > 0,
       status: stock > 0 ? 'available' : 'sold_out',
-      imageUrl: resolvedUrl || FALLBACK_IMAGE,
+      homeImageUrl: resolvedUrl || null,
       imagePath: resolvedPath
     });
     elements.productForm.reset();
