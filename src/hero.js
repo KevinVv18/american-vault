@@ -289,32 +289,57 @@ if (hero && bagSvg) {
     const box0 = new THREE.Box3().setFromObject(model);
     const size0 = box0.getSize(new THREE.Vector3());
     const center0 = box0.getCenter(new THREE.Vector3());
-    // bajar 4% para dar respiro abajo
+    // Subir el modelo ~8% respecto al centro del bbox: asi la linea
+    // inferior de la cartera queda lejos del fade del hero cuando gira,
+    // y la masa visual se concentra en el tercio superior del frame
+    // (regla del tercio aplicada a fotografia de producto).
     model.position.sub(center0);
-    model.position.y -= size0.y * 0.04;
+    model.position.y += size0.y * 0.08;
 
     const maxDim = Math.max(size0.x, size0.y, size0.z);
-    const target = 1.65; // altura visible objetivo en unidades 3D
+    // altura visible objetivo en unidades 3D — algo mas chico que antes
+    // (1.55 vs 1.65) para que aunque gire 360 nunca roce el bottom del
+    // viewport sticky.
+    const target = 1.55;
     const scale = target / maxDim;
     pivot.scale.setScalar(scale);
 
     // --- render reactivo (driven por scroll, no por rAF) ---
     // Se llama desde el scroll handler cada vez que el progress cambia.
     // Asi el 3D solo pinta cuando hay algo visualmente que cambiar.
-    // Offset de rotacion: el FBX carga con la cara lateral hacia la camara.
-    // Para que el hero entre con un 3/4 halagador (no de canto), empujamos
-    // la fase -45deg; asi p=0 muestra frente-3/4, p=0.25 costado, etc.
-    const Y_OFFSET = -Math.PI * 0.25;
+    //
+    // Rotacion: entramos en un 3/4 halagador y terminamos de frente
+    // pleno a camara (el lado con cadena + herraje). Calibrado
+    // empiricamente via framebuffer sampling: el FBX tiene su "front"
+    // natural a rotY = 3*PI/2 (270deg). Con START = -PI/4 (315deg) el
+    // primer frame ya muestra la 3/4 view. SWEEP de 315deg (7*PI/4)
+    // cubre casi una vuelta completa y asienta el front a p=1.
+    //   p=0  -> 315deg (3/4 view, lado + frente)
+    //   p=1  -> 270deg (frente pleno, front-on)
+    // easeOutCubic en la fase final (p>0.7) desacelera la llegada:
+    // la cartera no "frena" — se posa.
+    const START   = -Math.PI * 0.25;       // 315deg
+    const END     = Math.PI * 1.5;         // 270deg (front-on calibrado)
+    const SWEEP   = END - START;            // 7PI/4 = 315deg
     let lastP = -1;
     function render3D(p) {
       if (p !== lastP) {
-        // Rotacion: giro completo a lo largo del hero, offseted a 3/4 view
-        pivot.rotation.y = Y_OFFSET + p * TAU;
+        // easeOutCubic solo en el ultimo 30% para settling final
+        let pe = p;
+        if (p > 0.7) {
+          const t = (p - 0.7) / 0.3; // 0..1 en la zona de asentamiento
+          const eased = 1 - Math.pow(1 - t, 3);
+          pe = 0.7 + eased * 0.3;
+        }
+        pivot.rotation.y = START + pe * SWEEP;
         // Dolly-in sutil al cruzar el medio (mas cerca cuando cruza el canto)
         const edge = Math.sin(p * Math.PI); // 0 al inicio/fin, 1 al medio
         camera.position.z = 3.1 - edge * 0.32;
-        // Leve inclinacion para que no se vea completamente de perfil
-        pivot.rotation.x = Math.sin(p * Math.PI * 2) * 0.06;
+        // Leve inclinacion para que no se vea completamente de perfil,
+        // pero en el tramo final (p>0.85) forzamos a 0 para que el
+        // encuadre frontal sea perfectamente recto.
+        const tiltFactor = p > 0.85 ? Math.max(0, 1 - (p - 0.85) / 0.15) : 1;
+        pivot.rotation.x = Math.sin(p * Math.PI * 2) * 0.06 * tiltFactor;
         lastP = p;
       }
       renderer.render(scene, camera);

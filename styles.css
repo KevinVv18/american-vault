@@ -48,6 +48,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "ss01", "cv11";
+  /* Bloquea seleccion de texto a nivel global — la UI del catalogo
+     se lee como una app editorial, no como un documento. No queremos
+     que el usuario arrastre seleccion sobre botones, wordmark,
+     labels, precios, brand pills, etc. Las superficies donde si
+     tiene sentido escribir/copiar (inputs y textarea) hacen opt-in
+     abajo. */
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Deshabilita el callout de iOS (copy/share) sobre imagenes y
+     texto — mismo principio: app-like, no document-like. */
+  -webkit-touch-callout: none;
+}
+/* Opt-in: formularios y areas editables siguen siendo seleccionables */
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
 }
 
 h1, h2, h3, h4 {
@@ -80,6 +98,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--line);
+  /* transicion suave entre estado dark (hero) y light (catalogo). El
+     toggle sucede por clase desde JS sincronizado con scroll; animar
+     background/color/border da continuidad perceptual sin requerir
+     mas JS. */
+  transition:
+    background-color 0.32s ease,
+    color 0.32s ease,
+    border-bottom-color 0.32s ease;
 }
 .topbar-inner {
   max-width: 1400px;
@@ -135,21 +161,28 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* badge numérico */
 .icon-btn .count-bubble {
   position: absolute;
-  top: -2px; right: -2px;
-  min-width: 18px; height: 18px;
-  padding: 0 5px;
+  top: -1px; right: -1px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
   border-radius: 999px;
   background: var(--ink);
   color: #fff;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 600;
   display: inline-flex; align-items: center; justify-content: center;
-  border: 2px solid var(--bg);
+  /* Antes: border 2px var(--bg). Sobre estado .is-on (bg blanco) el
+     border blanco se fundia con el bg y la burbuja "se achicaba"
+     visualmente. Fuera. La separacion con el icono se resuelve con
+     un box-shadow sutil que no come area. */
+  border: 0;
+  box-shadow: 0 0 0 2px var(--bg);
   letter-spacing: 0;
+  line-height: 1;
 }
 .icon-btn.is-on .count-bubble {
   background: #fff;
   color: var(--ink);
+  box-shadow: 0 0 0 2px var(--bg);
 }
 .icon-btn .count-bubble:empty,
 .icon-btn .count-bubble.hidden { display: none; }
@@ -187,7 +220,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   grid-template-rows: auto 1fr auto;
   align-items: center;
   gap: 18px;
-  padding: clamp(80px, 13vh, 120px) 24px clamp(28px, 6vh, 48px);
+  /* Padding bottom mas generoso para que la linea inferior de la
+     cartera no alcance el fade visible aun girando de perfil. El
+     modelo se sube ~8% en hero.js y aqui le damos 70-110px abajo:
+     juntos dejan la cartera flotando sin tocar el fondo. */
+  padding: clamp(80px, 13vh, 120px) 24px clamp(70px, 11vh, 110px);
   overflow: hidden;
   perspective: 1400px;
   perspective-origin: 50% 55%;
@@ -292,10 +329,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
   50%      { transform: translateY(5px); }
 }
 
-/* Topbar invertido cuando el hero ocupa la vista */
+/* Topbar invertido cuando el hero ocupa la vista.
+   BUG PREVIO: background rgba(0,0,0,0.18). En el strip de 56px que
+   la topbar sticky ocupa sobre el <body>, el pixel detras NO es el
+   hero (el hero empieza despues en el flujo); es el body bg claro.
+   Entonces 18% black sobre claro = gris silver — leia como
+   "cargando" o como un segundo fondo. FIX: negro solido. Sin
+   translucencia. Asi el topbar es una barra negra coherente con el
+   hero negro y no toca el body claro visualmente. */
 .topbar.is-over-dark {
-  background: rgba(0, 0, 0, 0.18);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+  background: #000;
+  border-bottom-color: transparent;
   color: #fff;
 }
 .topbar.is-over-dark .wordmark,
@@ -306,7 +350,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .topbar.is-over-dark .count-bubble {
   background: #fff; color: #000;
-  border-color: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {
