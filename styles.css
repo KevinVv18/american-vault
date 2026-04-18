@@ -160,27 +160,24 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hero-vault {
   position: relative;
   height: 200vh;                /* 2 pantallas de scroll para pasar el giro */
-  /* Gradiente radial sutil: centro gris muy oscuro, bordes negros puros.
-     Da profundidad al bag negro-sobre-negro sin llegar a verse como fondo
-     gris — lee como "sombra vignette" en dark mode. */
-  background:
-    radial-gradient(ellipse 70% 55% at 50% 45%, #151515 0%, #050505 55%, #000 100%);
+  /* Fondo: negro puro durante el sticky (primera pantalla) + transicion
+     lineal a var(--bg) a lo largo de la segunda pantalla.
+     Antes usabamos un radial gradient + un ::after con linear fade. Esa
+     combinacion generaba una "linea" diagonal perceptible en la union
+     entre el vignette y el fade. Un solo gradiente vertical con paradas
+     intermedias (easing manual) hace la transicion imperceptible y
+     termina exactamente en var(--bg) para matchear el siguiente bloque. */
+  background: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 48%,
+    #050505 60%,
+    #1e1e1e 74%,
+    #787878 88%,
+    var(--bg) 100%
+  );
   color: #fff;
   margin-top: -1px;             /* tapa el border-bottom del topbar sobre el negro */
-}
-/* Fade-out al siguiente bloque: despues de que el sticky libera, las
-   ultimas ~80vh del hero transicionan de negro a blanco (bg del body).
-   Asi no hay corte visible entre hero oscuro y catalogo claro. */
-.hero-vault::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 120vh;                   /* empieza despues del sticky (100vh) + margen */
-  height: 80vh;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, var(--bg) 100%);
-  pointer-events: none;
-  z-index: 1;
 }
 .hero-sticky {
   position: sticky;

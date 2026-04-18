@@ -122,11 +122,10 @@ if (hero && bagSvg) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    // Exposicion baja: el bag es cuero negro sobre fondo negro. Con exposicion
-    // alta + RoomEnvironment brillante el PBR leia la piel como superficie
-    // espejo y salia "blanca". 0.85 deja ver la forma por el specular pero
-    // sin overexpose.
-    renderer.toneMappingExposure = 0.85;
+    // Exposicion: el bag es cuero negro sobre fondo negro. Queremos que la
+    // forma se lea por silueta + specular highlights del cuero (leve) y del
+    // herraje dorado (fuerte). 1.05 da buen contraste sin lavar los negros.
+    renderer.toneMappingExposure = 1.05;
     sizeRenderer();
 
     // --- scene ---
@@ -147,22 +146,22 @@ if (hero && bagSvg) {
     camera.lookAt(0, 0, 0);
 
     // --- luces (clave + rim + fill) ---
-    // Setup low-key: clave principal calida desde arriba-derecha, rim frio
-    // desde atras para silueta, hemi suave de relleno. Intensidades bajas
-    // para que el cuero negro se lea como cuero y no como superficie
-    // espejeada blanca.
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x0a0a0a, 0.18);
+    // Setup low-key de estudio: clave calida principal desde arriba-derecha,
+    // rim frio desde atras izquierda para recortar la silueta del fondo
+    // negro, fill muy suave y hemi de relleno ambiental. Valores pensados
+    // para que el cuero negro se lea por highlights + pespunte sin blanquearse.
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x0a0a0a, 0.35);
     scene.add(hemi);
 
-    const key = new THREE.DirectionalLight(0xfff4e6, 1.1);
+    const key = new THREE.DirectionalLight(0xfff4e6, 2.2);
     key.position.set(2.2, 3.0, 2.4);
     scene.add(key);
 
-    const rim = new THREE.DirectionalLight(0xe6f0ff, 0.55);
+    const rim = new THREE.DirectionalLight(0xd6e5ff, 1.4);
     rim.position.set(-3.0, 1.2, -2.0);
     scene.add(rim);
 
-    const fill = new THREE.DirectionalLight(0xffffff, 0.12);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.25);
     fill.position.set(0, -2, 2);
     scene.add(fill);
 
@@ -188,54 +187,32 @@ if (hero && bagSvg) {
       );
     });
 
-    // Materiales: split deliberado leather vs metal.
-    //
-    // Leather (lower/upper): dielectrico puro. Solo base color + normal.
-    // Eliminar metalnessMap/roughnessMap es crucial: si el canal metallic
-    // del paquete PBR esta mal codificado (p.ej. webp con alpha o gamma
-    // mal), el shader lee el cuero como superficie metalica y el env map
-    // blanquea todo. Fijamos metalness=0 forzoso y roughness alto (cuero
-    // mate). envMapIntensity muy baja para que no capture la sala.
-    //
-    // Metal (hardware): full PBR con las 4 mapas. El herraje dorado necesita
-    // metalness=1 y reflejos del env map para leerse como metal.
-    const loadLeatherMaps = async (r) => {
-      const [map, normalMap] = await Promise.all([
-        loadTex(`purse_${r}_Base_color.webp`, true),
-        loadTex(`purse_${r}_normal.webp`,     false)
-      ]);
-      return new THREE.MeshStandardMaterial({
-        map,
-        normalMap,
-        color: 0x1a1a1a,       // leve tinte negro por si el base color sale gris
-        metalness: 0.0,
-        roughness: 0.78,
-        envMapIntensity: 0.22
-      });
-    };
-    const loadMetalMaps = async () => {
+    // Materiales PBR por region. Las 4 texturas de Substance Painter son
+    // datos validos (base color negro con pespunte claro, metalness casi 0
+    // en cuero y casi 1 en herraje, roughness alto en cuero, bajo en metal).
+    // Dejamos que los mapas manejen metalness/roughness per pixel y solo
+    // ajustamos envMapIntensity para balancear: cuero capta poco reflejo,
+    // herraje mucho.
+    const regions = ['lower', 'metal', 'upper'];
+    const ENV = { lower: 0.55, metal: 1.0, upper: 0.55 };
+    const materials = {};
+    await Promise.all(regions.map(async (r) => {
       const [map, normalMap, metalnessMap, roughnessMap] = await Promise.all([
-        loadTex('purse_metal_Base_color.webp', true),
-        loadTex('purse_metal_normal.webp',     false),
-        loadTex('purse_metal_metallic.webp',   false),
-        loadTex('purse_metal_roughness.webp',  false)
+        loadTex(`purse_${r}_Base_color.webp`, true),
+        loadTex(`purse_${r}_normal.webp`,     false),
+        loadTex(`purse_${r}_metallic.webp`,   false),
+        loadTex(`purse_${r}_roughness.webp`,  false)
       ]);
-      return new THREE.MeshStandardMaterial({
+      materials[r] = new THREE.MeshStandardMaterial({
         map,
         normalMap,
         metalnessMap,
         roughnessMap,
-        metalness: 1.0,
-        roughness: 0.55,
-        envMapIntensity: 0.9
+        metalness: 1.0,   // multiplicador del mapa; el mapa decide per pixel
+        roughness: 1.0,
+        envMapIntensity: ENV[r]
       });
-    };
-    const [leatherLower, leatherUpper, metalMat] = await Promise.all([
-      loadLeatherMaps('lower'),
-      loadLeatherMaps('upper'),
-      loadMetalMaps()
-    ]);
-    const materials = { lower: leatherLower, upper: leatherUpper, metal: metalMat };
+    }));
 
     // --- cargar FBX ---
     // El FBX trae referencias embedidas a .png que no estan en disco
@@ -258,6 +235,17 @@ if (hero && bagSvg) {
         reject
       );
     });
+
+    // ROOT CAUSE del render blanco (sesion anterior): el FBX trae 7 PointLights
+    // embedidas de la escena de Blender original con intensidades 100-3000.
+    // Al agregar el modelo a nuestra escena, esas luces se suman a las
+    // nuestras (key/rim/fill) y revientan el PBR — el cuero negro se lee
+    // como superficie blanca. Las barremos antes de procesar los meshes.
+    const strayLights = [];
+    model.traverse((child) => {
+      if (child.isLight) strayLights.push(child);
+    });
+    strayLights.forEach((l) => l.parent && l.parent.remove(l));
 
     model.traverse((child) => {
       if (!child.isMesh) return;
