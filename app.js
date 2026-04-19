@@ -744,6 +744,15 @@ function renderCatalogAndStats() {
     elements.pageCount.textContent =
       `${state.products.length} piezas en catalogo · ${totalAvail} disponibles`;
   }
+
+  // Notifica al hero (y otros) que el count real del catalogo esta listo.
+  // El hero lo usa para el count-up bajo el CTA del acto 3. Pasa tanto total
+  // como disponibles para que el listener decida cual mostrar.
+  // window.__avCatalog actua como "ultimo valor conocido" para listeners que
+  // se registren DESPUES del primer dispatch (evita la race app.js vs hero.js).
+  const countDetail = { total: state.products.length, available: totalAvail };
+  window.__avCatalog = countDetail;
+  document.dispatchEvent(new CustomEvent('av:catalog-count', { detail: countDetail }));
   if (elements.browsingInfo) {
     elements.browsingInfo.textContent =
       `${filtered.length} de ${state.products.length}${state.filters.stock === 'available' ? ' · solo disponibles' : ''}`;

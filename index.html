@@ -130,14 +130,31 @@
         </div>
       </div>
 
-      <div class="hero-foot">
-        <p class="hero-wordmark">American Vault</p>
-        <p class="hero-tagline">Reventa curada de carteras importadas desde USA</p>
-        <div class="hero-scroll-hint" aria-hidden="true">
-          <span>desliza</span>
-          <svg viewBox="0 0 12 22" width="10" height="18">
-            <path d="M6 1 v18 M1 14 L6 20 L11 14" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+      <!-- Grain editorial: textura fina que viaja en parallax sobre la
+           escena. Hace el hero sentirse impreso, no renderizado. Se
+           posiciona como ultima capa con mix-blend-mode overlay; pointer
+           events: none para no comer clicks. Se desactiva en reduce-motion. -->
+      <div class="hero-grain" aria-hidden="true"></div>
+
+      <div class="hero-acts" id="heroActs">
+        <div class="hero-act" data-act="1" aria-hidden="true">
+          <p>USA a Perú.</p>
+        </div>
+        <div class="hero-act" data-act="2" aria-hidden="true">
+          <p>Cada pieza, auténtica.</p>
+        </div>
+        <div class="hero-act" data-act="3">
+          <p>Lista para ser tuya.</p>
+          <a href="#catalogGrid" class="hero-act-cta">
+            <span>Ver catálogo</span>
+            <svg viewBox="0 0 12 22" width="9" height="16" aria-hidden="true">
+              <path d="M6 1 v18 M1 14 L6 20 L11 14" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+          <p class="hero-stock-line" aria-live="polite">
+            <span class="hero-stock-num" id="heroStockNum">—</span>
+            <span class="hero-stock-label">piezas esperándote</span>
+          </p>
         </div>
       </div>
     </div>

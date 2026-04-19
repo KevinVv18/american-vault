@@ -29,6 +29,87 @@ if (hero && bagSvg) {
     render3D: null     // callback que el 3D registra para pintar con el progress actual
   };
 
+  // Actos editoriales: 3 headlines que se revelan/reemplazan por scroll.
+  // Cacheamos los nodos al cargar para no hacer querySelector en cada scroll.
+  // Cada acto tiene un rango de visibilidad [in, out] sobre el progress p:
+  //   acto 1 (USA a Peru)                -> entra al abrir, sale antes del giro
+  //   acto 2 (Cada pieza, autentica)     -> durante el giro lateral
+  //   acto 3 (Lista para ser tuya + CTA) -> zona de frente + settling final
+  // En reduce-motion forzamos los 3 a mostrarse a la vez (sin animacion).
+  const actEls = Array.from(hero.querySelectorAll('.hero-act'));
+  const actRanges = [
+    { in: 0.00, out: 0.26 },
+    { in: 0.30, out: 0.58 },
+    { in: 0.62, out: 1.10 }  // el tercero se queda hasta el final
+  ];
+  if (prefersReduced) {
+    // Sin animacion de scroll: mostramos los 3 apilados (fallback estatico).
+    actEls.forEach(el => el.classList.add('is-in'));
+  }
+
+  // --- Stock counter (acto 3): count-up animado cuando el acto entra ---
+  // El numero real llega via CustomEvent('av:catalog-count') desde app.js
+  // cuando el catalogo se renderiza. El count-up se dispara la PRIMERA vez
+  // que el acto 3 tiene .is-in, y no se repite (seria chicle visual).
+  // Si el numero llega DESPUES del primer is-in (carga lenta), disparamos
+  // el count-up al recibir el evento.
+  const stockEl = document.getElementById('heroStockNum');
+  const stock = {
+    target: null,
+    played: false,
+    scheduled: false
+  };
+  function animateStockUp(to) {
+    if (!stockEl || to == null) return;
+    stock.played = true;
+    // Reduce-motion: snap al valor final sin tween.
+    if (prefersReduced) {
+      stockEl.textContent = String(to);
+      return;
+    }
+    const duration = 1200;
+    const frameMs = 1000 / 50; // ~50fps es visualmente suficiente para un odometro
+    const start = Date.now();
+    // easeOutQuart: llega rapido y desacelera.
+    const easeOutQuart = (t) => 1 - Math.pow(1 - t, 4);
+    // Usamos setTimeout en vez de rAF por la misma razon que el scroll
+    // handler: ciertos entornos de preview no disparan rAF de forma fiable.
+    (function tick() {
+      const t = Math.min(1, (Date.now() - start) / duration);
+      const v = Math.round(easeOutQuart(t) * to);
+      stockEl.textContent = String(v);
+      if (t < 1) setTimeout(tick, frameMs);
+    })();
+  }
+  function maybePlayStock() {
+    if (stock.played || stock.target == null) return;
+    const act3 = actEls[2];
+    if (!(act3 && act3.classList.contains('is-in'))) return;
+    // target===0 suele ser el estado transitorio inicial (antes de que el
+    // fetch de Supabase termine). No animamos a 0 — esperamos un valor real.
+    // Si al final del fetch el catalogo sigue vacio, se queda el placeholder
+    // "0" y la linea dice "0 piezas esperandote" sin animacion (sad path).
+    if (stock.target === 0) return;
+    animateStockUp(stock.target);
+  }
+  function handleCatalogCount(detail) {
+    const d = detail || {};
+    // Priorizamos disponibles (trust signal > inventario total).
+    const n = typeof d.available === 'number' ? d.available : d.total;
+    if (typeof n !== 'number' || n < 0) return;
+    stock.target = n;
+    if (stockEl && !stock.played) {
+      // Placeholder "—" se reemplaza por "0" para que el count-up
+      // arranque de cero cuando entre el acto 3.
+      stockEl.textContent = '0';
+    }
+    maybePlayStock();
+  }
+  document.addEventListener('av:catalog-count', (e) => handleCatalogCount(e.detail));
+  // Fallback para race: si app.js ya disparo el evento antes de que este
+  // listener se registrara, leemos el ultimo valor del global.
+  if (window.__avCatalog) handleCatalogCount(window.__avCatalog);
+
   // ---- scroll progress (siempre activo, driver de ambas capas) ----
   // El render 3D se dispara desde aca en vez de rAF-loop: ahorra GPU cuando
   // la pagina esta idle y se alinea naturalmente con los unicos eventos que
@@ -57,9 +138,26 @@ if (hero && bagSvg) {
     const squash   = 1 - edgeness * 0.08;
     bagSvg.style.transform = `rotateY(${deg}deg) scale(${squash})`;
 
-    // Hint desliza: se desvanece en cuanto empieza a pasar
-    const hint = hero.querySelector('.hero-scroll-hint');
-    if (hint) hint.style.opacity = String(Math.max(0, 1 - p * 2.2));
+    // Grain parallax: drift vertical sutil (foreground se siente mas cerca
+    // que la textura). 64px de recorrido a lo largo del hero (2 pantallas)
+    // es apenas perceptible — objetivo buscado: sentirlo, no verlo.
+    if (!prefersReduced) {
+      hero.style.setProperty('--grain-y', `${(p * -64).toFixed(1)}px`);
+    }
+
+    // Actos editoriales: togglear .is-in por rango.
+    // Si reduce-motion esta on, actEls ya tienen .is-in y no tocamos nada.
+    if (!prefersReduced && actEls.length) {
+      for (let i = 0; i < actEls.length; i++) {
+        const r = actRanges[i];
+        const visible = p >= r.in && p <= r.out;
+        // toggle es idempotente; el DOM solo cambia si hace falta, la
+        // transicion CSS se encarga del fade + slide.
+        actEls[i].classList.toggle('is-in', visible);
+      }
+      // Dispara el count-up la primera vez que entra el acto 3.
+      if (!stock.played) maybePlayStock();
+    }
 
     // ---- topbar dark/light sync con el gradiente del hero ----
     // BUG PREVIO: usabamos IntersectionObserver con threshold 0.35 sobre un
@@ -166,6 +264,9 @@ if (hero && bagSvg) {
     const key = new THREE.DirectionalLight(0xfff4e6, 2.2);
     key.position.set(2.2, 3.0, 2.4);
     scene.add(key);
+    // Posicion base de la key para el orbit parcial en render3D.
+    // Clonamos ahora porque key.position muta en cada frame.
+    const KEY_BASE = key.position.clone();
 
     const rim = new THREE.DirectionalLight(0xd6e5ff, 1.4);
     rim.position.set(-3.0, 1.2, -2.0);
@@ -340,6 +441,39 @@ if (hero && bagSvg) {
         // encuadre frontal sea perfectamente recto.
         const tiltFactor = p > 0.85 ? Math.max(0, 1 - (p - 0.85) / 0.15) : 1;
         pivot.rotation.x = Math.sin(p * Math.PI * 2) * 0.06 * tiltFactor;
+
+        // ---- Contact shadow: responde al angulo de rotacion ----
+        // profileness = 1 cuando la cartera esta 90 grados girada (silueta
+        // estrecha, perfil puro); 0 de frente o de espaldas (silueta ancha).
+        // La sombra ancha+visible cuando hay mucha base proyectada al piso
+        // y angosta+tenue cuando la cartera esta de canto. El delta con END
+        // (front-on) mantiene la formula estable aunque el modelo siga rotando.
+        const profileness = Math.abs(Math.sin(pivot.rotation.y - END));
+        const widthPct = 52 - profileness * 24;    // 28% (perfil) -> 52% (frente)
+        const shadowOp = 0.26 - profileness * 0.14; // 0.12 -> 0.26
+        stage.style.setProperty('--shadow-width',   widthPct.toFixed(1) + '%');
+        stage.style.setProperty('--shadow-opacity', shadowOp.toFixed(3));
+
+        // ---- Key light orbit parcial ----
+        // La key light estatica deja al herraje dorado sin highlight cuando
+        // la cartera esta de espaldas. Si orbitaramos 1:1 con el bag el
+        // reflejo quedaria congelado en la misma zona y se pierde el
+        // atractivo de una toma rotante. Compromiso: orbitamos la luz a un
+        // ~45% del angulo del bag. Los highlights siguen viajando (perciben
+        // movimiento) pero nunca se van completamente.
+        //
+        // Implementacion: rotamos la posicion base (KEY_BASE) alrededor del
+        // eje Y por fracc * delta del bag respecto del front canonico.
+        const delta = (pivot.rotation.y - END) * 0.45;
+        const cos = Math.cos(delta);
+        const sin = Math.sin(delta);
+        // rotacion manual alrededor de Y (evita alocar Vector3 por frame)
+        key.position.set(
+          KEY_BASE.x * cos + KEY_BASE.z * sin,
+          KEY_BASE.y,
+          -KEY_BASE.x * sin + KEY_BASE.z * cos
+        );
+
         lastP = p;
       }
       renderer.render(scene, camera);
