@@ -948,6 +948,8 @@ function sendClientWishlistWhatsapp() {
 // re-renderizamos para mantener stock/precio sincronizados.
 let detailCurrentId = null;
 
+const BASE_TITLE = document.title;
+
 function openProductDetail(product, { pushHistory = true } = {}) {
   if (!product) return;
   detailCurrentId = product.id;
@@ -955,6 +957,11 @@ function openProductDetail(product, { pushHistory = true } = {}) {
   elements.detailModal.classList.remove('hidden');
   elements.detailModal.setAttribute('aria-hidden', 'false');
   document.body.classList.add('detail-open');
+
+  // Title del tab dinamico — ayuda en multi-pestana y al compartir.
+  // (WhatsApp/OG no leen JS, pero el title es util para Chrome tabs,
+  // bookmarks, historial.)
+  document.title = `${product.brand} — ${product.name} · American Vault`;
 
   // Push al history solo si no venimos de un popstate (evita duplicar).
   if (pushHistory) {
@@ -970,6 +977,7 @@ function closeProductDetail({ popHistory = true } = {}) {
   elements.detailModal.classList.add('hidden');
   elements.detailModal.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('detail-open');
+  document.title = BASE_TITLE;
 
   if (popHistory) {
     const url = new URL(window.location.href);

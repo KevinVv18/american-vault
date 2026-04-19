@@ -3,10 +3,53 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Catalogo de Carteras | American Vault</title>
-  <meta name="description" content="Catalogo de carteras importadas de reventa. Marcas Guess, Michael Kors, Tommy Hilfiger, Steve Madden, Nautica, Juicy Couture. Peru." />
+  <title>American Vault — Carteras importadas en Peru</title>
+  <meta name="description" content="Catalogo curado de carteras importadas: Guess, Michael Kors, Tommy Hilfiger, Steve Madden, Nautica y Juicy Couture. Entregas en Peru." />
+  <meta name="theme-color" content="#000000" />
+
+  <!-- Open Graph (WhatsApp, Facebook, LinkedIn) ---------------- -->
+  <!-- Nota: el hosting es estatico, asi que estos tags son site-wide.
+       Los deep-links /?id=xxx mostraran este unfurl generico. Para
+       unfurl por producto habria que montar un edge worker / SSR. -->
+  <meta property="og:site_name" content="American Vault" />
+  <meta property="og:title" content="American Vault — Carteras importadas" />
+  <meta property="og:description" content="Catalogo curado de carteras autenticas importadas. Marcas premium. Entregas en Peru." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://american-vault.com/" />
+  <meta property="og:image" content="https://american-vault.com/stock/default-bag.jpg" />
+  <meta property="og:image:alt" content="American Vault — pieza del catalogo" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="es_PE" />
+
+  <!-- Twitter card (usa los mismos campos OG como fallback) ---- -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="American Vault — Carteras importadas" />
+  <meta name="twitter:description" content="Catalogo curado de carteras autenticas importadas. Marcas premium. Entregas en Peru." />
+  <meta name="twitter:image" content="https://american-vault.com/stock/default-bag.jpg" />
+
+  <!-- JSON-LD Organization (SEO) ------------------------------- -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    "name": "American Vault",
+    "url": "https://american-vault.com/",
+    "logo": "https://american-vault.com/AV%20LOGO/1.png",
+    "image": "https://american-vault.com/stock/default-bag.jpg",
+    "description": "Catalogo curado de carteras autenticas importadas. Entregas en Peru.",
+    "address": { "@type": "PostalAddress", "addressCountry": "PE" },
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "sales",
+      "telephone": "+51998251375",
+      "availableLanguage": ["Spanish"]
+    }
+  }
+  </script>
 
   <link rel="icon" type="image/png" href="AV%20LOGO/1.png" />
+  <link rel="canonical" href="https://american-vault.com/" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
