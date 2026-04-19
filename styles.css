@@ -1141,10 +1141,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   object-fit: contain;
   display: block;
 }
-.detail-media .status-chip {
-  position: absolute;
-  top: 24px; left: 24px;
-}
 
 .detail-info {
   padding: 28px 24px 60px;
@@ -1160,7 +1156,35 @@ button, input, select, textarea { font: inherit; color: inherit; }
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--ink-soft);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
 }
+
+/* Tag de estado inline: dot de color + texto, sigue la tipografia del
+   brand. Se muestra solo cuando aporta info (low/out/reserved). */
+.detail-status {
+  position: relative;
+  padding-left: 14px;
+  font-size: inherit;
+  letter-spacing: inherit;
+  color: var(--ink-soft);
+}
+.detail-status[hidden] { display: none; }
+.detail-status::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translateY(-50%);
+}
+.detail-status[data-state="available"] { color: var(--success, #1f7a3e); }
+.detail-status[data-state="low"]       { color: #8a6a00; }
+.detail-status[data-state="out"]       { color: var(--danger); }
+.detail-status[data-state="reserved"]  { color: var(--ink-soft); }
 .detail-name {
   margin: 0;
   font-family: "Fraunces", "Cormorant Garamond", serif;

@@ -228,7 +228,7 @@ function cacheElements() {
   elements.detailModal          = document.getElementById('productDetailModal');
   elements.detailCloseBtn       = document.getElementById('detailCloseBtn');
   elements.detailImage          = document.getElementById('detailImage');
-  elements.detailStatusChip     = document.getElementById('detailStatusChip');
+  elements.detailStatus         = document.getElementById('detailStatus');
   elements.detailBrand          = document.getElementById('detailBrand');
   elements.detailName           = document.getElementById('detailName');
   elements.detailColor          = document.getElementById('detailColor');
@@ -997,8 +997,15 @@ function renderProductDetail(product) {
   elements.detailImage.onerror = () => { elements.detailImage.src = FALLBACK_IMAGE; };
   elements.detailImage.alt = `Cartera ${product.name}`;
 
-  elements.detailStatusChip.className = `status-chip ${status.className}`;
-  elements.detailStatusChip.textContent = status.label;
+  // Status inline: solo lo mostramos cuando aporta info (low/out/reserved).
+  // Para 'available' el stock del spec row ya lo dice; esconderlo evita ruido.
+  if (status.className === 'available') {
+    elements.detailStatus.hidden = true;
+  } else {
+    elements.detailStatus.hidden = false;
+    elements.detailStatus.dataset.state = status.className;
+    elements.detailStatus.textContent = status.label;
+  }
 
   elements.detailBrand.textContent = product.brand;
   elements.detailName.textContent = product.name;
