@@ -211,40 +211,70 @@
 
     <!-- Vista: Catalogo -->
     <div id="adminViewCatalog" class="admin-view is-active" role="tabpanel" aria-labelledby="adminTabCatalog">
-      <form id="productForm" class="product-form">
-        <h3>Agregar articulo</h3>
+      <form id="productForm" class="product-form quick-add">
+        <header class="quick-add-head">
+          <h3>Agregar pieza</h3>
+          <p class="muted">Toma la foto del grupo de WhatsApp y completa los datos. Tarda menos de un minuto.</p>
+        </header>
+
+        <!-- Zona de foto: drop / file picker con preview -->
+        <label id="photoDrop" class="photo-drop" for="newImageFile">
+          <input id="newImageFile" name="imageFile" type="file" accept="image/*" />
+          <div id="photoDropEmpty" class="photo-drop-empty">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h3l2-2h6l2 2h3v12H4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+              <circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+            <strong>Toca para elegir la foto</strong>
+            <span>desde galeria o tomar una nueva</span>
+          </div>
+          <div id="photoDropPreview" class="photo-drop-preview hidden">
+            <img id="photoPreview" alt="Vista previa" />
+            <div class="photo-drop-meta">
+              <span id="photoPreviewInfo">—</span>
+              <button type="button" id="photoPreviewClear" class="link-button" aria-label="Quitar foto">Quitar</button>
+            </div>
+          </div>
+        </label>
+
         <div class="form-grid">
-          <div class="field">
+          <div class="field full">
             <label for="newName">Nombre</label>
-            <input id="newName" name="name" type="text" required />
+            <input id="newName" name="name" type="text" autocomplete="off" required placeholder="Ej. Pochette Metis" />
           </div>
           <div class="field">
             <label for="newBrand">Marca</label>
-            <input id="newBrand" name="brand" type="text" required />
+            <input id="newBrand" name="brand" type="text" list="brandSuggestions" autocomplete="off" required placeholder="Ej. Louis Vuitton" />
+            <datalist id="brandSuggestions"></datalist>
           </div>
           <div class="field">
             <label for="newColor">Color</label>
-            <input id="newColor" name="color" type="text" required />
+            <input id="newColor" name="color" type="text" list="colorSuggestions" autocomplete="off" required placeholder="Ej. Marron monogram" />
+            <datalist id="colorSuggestions"></datalist>
           </div>
           <div class="field">
             <label for="newPrice">Precio (S/)</label>
-            <input id="newPrice" name="price" type="number" min="0" step="0.01" required />
+            <input id="newPrice" name="price" type="number" min="0" step="1" inputmode="decimal" required placeholder="1200" />
           </div>
           <div class="field">
             <label for="newStock">Unidades</label>
-            <input id="newStock" name="stock" type="number" min="0" step="1" required />
-          </div>
-          <div class="field">
-            <label for="newImageFile">Imagen (archivo)</label>
-            <input id="newImageFile" name="imageFile" type="file" accept="image/*" />
-          </div>
-          <div class="field">
-            <label for="newImageUrl">o Imagen (URL)</label>
-            <input id="newImageUrl" name="imageUrl" type="url" placeholder="https://..." />
+            <input id="newStock" name="stock" type="number" min="0" step="1" inputmode="numeric" value="1" required />
           </div>
         </div>
-        <div class="submit-row">
-          <button type="submit" class="btn btn-primary">Guardar cartera</button>
+
+        <details class="quick-add-advanced">
+          <summary>Opciones avanzadas</summary>
+          <div class="field">
+            <label for="newImageUrl">Imagen por URL (si no cargaste archivo)</label>
+            <input id="newImageUrl" name="imageUrl" type="url" placeholder="https://..." />
+          </div>
+        </details>
+
+        <p id="productFormMessage" class="form-message"></p>
+
+        <div class="submit-row submit-row-split">
+          <button id="saveDraftBtn" type="button" class="btn btn-ghost">Guardar borrador</button>
+          <button id="publishBtn" type="submit" class="btn btn-primary">Publicar</button>
         </div>
       </form>
 

@@ -173,9 +173,20 @@ function cacheElements() {
   elements.adminViewCatalog     = document.getElementById('adminViewCatalog');
   elements.adminViewWishlist    = document.getElementById('adminViewWishlist');
   elements.productForm          = document.getElementById('productForm');
+  elements.productFormMessage   = document.getElementById('productFormMessage');
   elements.adminTableBody       = document.getElementById('adminTableBody');
   elements.signOutButton        = document.getElementById('signOutButton');
   elements.newImageFile         = document.getElementById('newImageFile');
+  elements.publishBtn           = document.getElementById('publishBtn');
+  elements.saveDraftBtn         = document.getElementById('saveDraftBtn');
+  elements.photoDrop            = document.getElementById('photoDrop');
+  elements.photoDropEmpty       = document.getElementById('photoDropEmpty');
+  elements.photoDropPreview     = document.getElementById('photoDropPreview');
+  elements.photoPreview         = document.getElementById('photoPreview');
+  elements.photoPreviewInfo     = document.getElementById('photoPreviewInfo');
+  elements.photoPreviewClear    = document.getElementById('photoPreviewClear');
+  elements.brandSuggestions     = document.getElementById('brandSuggestions');
+  elements.colorSuggestions     = document.getElementById('colorSuggestions');
   elements.wishlistList         = document.getElementById('wishlistList');
   elements.wishlistShowNotified = document.getElementById('wishlistShowNotified');
 
@@ -258,7 +269,20 @@ function bindEvents() {
   // Admin
   elements.productForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    await addProduct();
+    await addProduct({ asDraft: false });
+  });
+  elements.saveDraftBtn.addEventListener('click', async () => {
+    await addProduct({ asDraft: true });
+  });
+  // Foto: comprimir + preview en cuanto se elige archivo
+  elements.newImageFile.addEventListener('change', handlePhotoChange);
+  elements.photoPreviewClear.addEventListener('click', (e) => {
+    // El input file cubre la zona completa, asi que "Cambiar" no hace falta
+    // para re-elegir foto. Aqui lo usamos como "quitar" para volver al estado
+    // vacio (si el usuario no quiere subir imagen).
+    e.preventDefault();
+    e.stopPropagation();
+    resetPhotoDrop();
   });
   elements.adminTableBody.addEventListener('change', handleAdminTableChange);
   elements.adminTableBody.addEventListener('click', handleAdminTableClick);
@@ -930,6 +954,7 @@ function renderAdminPanel() {
   elements.adminSummary.textContent = `${state.products.length} articulos · ${state.wishlistEntries.filter((w) => !w.notified).length} avisos pendientes`;
   renderAdminTabs();
   renderAdminTable();
+  renderAdminSuggestions();
   renderWishlistAdmin();
 }
 
@@ -1168,47 +1193,188 @@ function clearFilters() {
 }
 
 // ---------- Admin: create / update / delete ----------
-async function addProduct() {
+// Cache del archivo comprimido entre el change del input y el submit.
+// La propia File API reemplaza el .files cuando asignamos uno nuevo, pero
+// guardarlo aparte hace explicito el flujo de compresion.
+let pendingPhotoFile = null;
+
+async function addProduct({ asDraft = false } = {}) {
   const formData = new FormData(elements.productForm);
   const name     = sanitizeText(formData.get('name'));
   const brand    = sanitizeText(formData.get('brand'));
   const color    = sanitizeText(formData.get('color'));
   const price    = sanitizePrice(formData.get('price'));
-  const stock    = sanitizeStock(formData.get('stock'));
+  const rawStock = sanitizeStock(formData.get('stock'));
   const imageUrl = sanitizeText(formData.get('imageUrl'));
 
   if (!name || !brand || !color) {
-    alert('Completa nombre, marca y color.');
+    setProductFormMessage('Completa nombre, marca y color.', 'error');
     return;
   }
+
+  // Estado de carga: deshabilitamos ambos botones mientras subimos.
+  const btns = [elements.publishBtn, elements.saveDraftBtn].filter(Boolean);
+  const activeBtn = asDraft ? elements.saveDraftBtn : elements.publishBtn;
+  const originalLabel = activeBtn?.textContent;
+  btns.forEach((b) => { b.disabled = true; });
+  if (activeBtn) activeBtn.textContent = 'Guardando...';
+  setProductFormMessage('', null);
 
   let resolvedUrl = imageUrl && isUrlLike(imageUrl) ? imageUrl : null;
   let resolvedPath = null;
 
-  const file = elements.newImageFile.files?.[0];
-  if (file) {
-    try {
+  try {
+    const file = pendingPhotoFile || elements.newImageFile.files?.[0] || null;
+    if (file) {
       const uploaded = await uploadImage(file);
       resolvedUrl  = uploaded.publicUrl;
       resolvedPath = uploaded.path;
-    } catch (error) {
-      alert(`No se pudo subir la imagen: ${error.message}`);
-      return;
     }
+  } catch (error) {
+    setProductFormMessage(`No se pudo subir la imagen: ${error?.message ?? 'error'}.`, 'error');
+    btns.forEach((b) => { b.disabled = false; });
+    if (activeBtn && originalLabel) activeBtn.textContent = originalLabel;
+    return;
   }
+
+  // Borrador: available=false, stock=0 — el item no aparece en el grid publico
+  // pero queda visible en la tabla admin para editarlo luego.
+  const stock = asDraft ? 0 : Math.max(0, rawStock);
+  const available = asDraft ? false : stock > 0;
 
   try {
     await createProduct({
       name, brand, color, price, stock,
-      available: stock > 0,
-      status: stock > 0 ? 'available' : 'sold_out',
+      available,
+      status: available ? 'available' : 'sold_out',
       homeImageUrl: resolvedUrl || null,
       imagePath: resolvedPath
     });
     elements.productForm.reset();
+    resetPhotoDrop();
+    setProductFormMessage(
+      asDraft
+        ? 'Borrador guardado. Lo ves en la tabla de abajo para activarlo luego.'
+        : 'Publicado. Ya aparece en el catalogo.',
+      'success'
+    );
   } catch (error) {
-    alert(`No se pudo guardar: ${error.message}`);
+    setProductFormMessage(`No se pudo guardar: ${error?.message ?? 'error'}.`, 'error');
+  } finally {
+    btns.forEach((b) => { b.disabled = false; });
+    if (activeBtn && originalLabel) activeBtn.textContent = originalLabel;
   }
+}
+
+function setProductFormMessage(text, kind) {
+  if (!elements.productFormMessage) return;
+  elements.productFormMessage.classList.remove('success');
+  if (kind === 'success') elements.productFormMessage.classList.add('success');
+  elements.productFormMessage.textContent = text;
+}
+
+// --- Foto: eleccion + compresion + preview -----------------
+async function handlePhotoChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    resetPhotoDrop();
+    return;
+  }
+  elements.photoDrop.classList.add('is-loading');
+  try {
+    const processed = await compressImage(file, { maxSide: 1600, quality: 0.82, maxBytes: 420_000 });
+    pendingPhotoFile = processed;
+    showPhotoPreview(processed, file);
+  } catch (err) {
+    console.warn('No se pudo comprimir la imagen, se usa original:', err);
+    pendingPhotoFile = file;
+    showPhotoPreview(file, file);
+  } finally {
+    elements.photoDrop.classList.remove('is-loading');
+  }
+}
+
+function showPhotoPreview(fileToPreview, originalFile) {
+  const url = URL.createObjectURL(fileToPreview);
+  elements.photoPreview.src = url;
+  elements.photoPreview.onload = () => URL.revokeObjectURL(url);
+
+  const sizeKb = Math.round(fileToPreview.size / 1024);
+  const origKb = Math.round(originalFile.size / 1024);
+  const changed = fileToPreview !== originalFile && sizeKb < origKb;
+  elements.photoPreviewInfo.textContent = changed
+    ? `${sizeKb} KB · optimizada (era ${origKb} KB)`
+    : `${sizeKb} KB`;
+
+  elements.photoDropEmpty.classList.add('hidden');
+  elements.photoDropPreview.classList.remove('hidden');
+}
+
+function resetPhotoDrop() {
+  pendingPhotoFile = null;
+  if (elements.newImageFile) elements.newImageFile.value = '';
+  if (elements.photoPreview) elements.photoPreview.src = '';
+  elements.photoDropEmpty?.classList.remove('hidden');
+  elements.photoDropPreview?.classList.add('hidden');
+}
+
+// Compresion client-side: reduce piedras (~3MB) a <~400KB sin perder
+// calidad visible. El bucket de Supabase es publico y cada foto viaja por
+// celular del usuario al subir, asi que esto ahorra tiempo y ancho de banda.
+async function compressImage(file, { maxSide = 1600, quality = 0.82, maxBytes = 420_000 } = {}) {
+  if (!file || !file.type.startsWith('image/')) return file;
+  // Si ya es chica, no tocamos nada (evitamos degradar calidad).
+  if (file.size <= maxBytes) return file;
+
+  const img = await loadImageFromFile(file);
+  const { width, height } = img;
+  const longest = Math.max(width, height);
+  const scale = longest > maxSide ? (maxSide / longest) : 1;
+  const targetW = Math.round(width * scale);
+  const targetH = Math.round(height * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+
+  // Intentamos JPEG con calidad decreciente hasta bajar de maxBytes (min 0.55).
+  let q = quality;
+  let blob = await canvasToBlob(canvas, 'image/jpeg', q);
+  while (blob && blob.size > maxBytes && q > 0.55) {
+    q = Math.max(0.55, q - 0.08);
+    blob = await canvasToBlob(canvas, 'image/jpeg', q);
+  }
+  if (!blob) return file;
+
+  const newName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+  return new File([blob], newName, { type: 'image/jpeg', lastModified: Date.now() });
+}
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((res) => canvas.toBlob(res, type, quality));
+}
+
+function renderAdminSuggestions() {
+  if (!elements.brandSuggestions || !elements.colorSuggestions) return;
+  const brands = [...new Set(state.products.map((p) => p.brand).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+  const colors = [...new Set(state.products.map((p) => p.color).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+  elements.brandSuggestions.innerHTML = brands.map((b) => `<option value="${escapeAttribute(b)}"></option>`).join('');
+  elements.colorSuggestions.innerHTML = colors.map((c) => `<option value="${escapeAttribute(c)}"></option>`).join('');
 }
 
 async function handleAdminTableChange(event) {
