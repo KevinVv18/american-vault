@@ -390,6 +390,41 @@
     </div>
   </div>
 
+  <!-- 10b. PRODUCT DETAIL MODAL (full-screen, deep-link ?id=xxx) -->
+  <div id="productDetailModal" class="detail-modal hidden" role="dialog" aria-modal="true" aria-labelledby="detailName" aria-hidden="true">
+    <button id="detailCloseBtn" class="detail-close" type="button" aria-label="Cerrar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+    </button>
+
+    <div class="detail-stage">
+      <figure class="detail-media">
+        <img id="detailImage" src="" alt="" />
+        <span id="detailStatusChip" class="status-chip"></span>
+      </figure>
+
+      <aside class="detail-info">
+        <p id="detailBrand" class="detail-brand"></p>
+        <h2 id="detailName" class="detail-name"></h2>
+
+        <dl class="detail-specs">
+          <div class="spec"><dt>Color</dt><dd id="detailColor"></dd></div>
+          <div class="spec"><dt>Precio</dt><dd id="detailPrice"></dd></div>
+          <div class="spec"><dt>Stock</dt><dd id="detailStock"></dd></div>
+        </dl>
+
+        <div class="detail-actions">
+          <button id="detailWishBtn" class="btn btn-ghost detail-wish" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16"><path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6C19 16.5 12 21 12 21Z" fill="currentColor"/></svg>
+            <span id="detailWishLabel">Guardar en wishlist</span>
+          </button>
+          <a id="detailWaBtn" class="btn btn-primary detail-wa" href="#" target="_blank" rel="noopener noreferrer">Pedir por WhatsApp</a>
+        </div>
+
+        <button id="detailShareBtn" class="link-button detail-share hidden" type="button">Compartir esta pieza</button>
+      </aside>
+    </div>
+  </div>
+
   <!-- 11. WISHLIST DRAWER (usuario final, guardados localmente) -->
   <div id="wishlistScrim" class="drawer-scrim" aria-hidden="true"></div>
   <aside id="wishlistDrawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="wishlistDrawerTitle" aria-hidden="true">

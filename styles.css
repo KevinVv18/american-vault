@@ -1085,6 +1085,186 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ===========================================================
+   8b. PRODUCT DETAIL MODAL (full-screen, deep-link ?id=)
+   Mobile-first: la imagen manda; el texto se apoya abajo.
+   En desktop se divide 50/50 para que la info respire.
+   =========================================================== */
+.detail-modal {
+  position: fixed; inset: 0; z-index: 55;
+  background: var(--bg);
+  display: grid;
+  overflow-y: auto;
+  animation: detailFadeIn 0.22s ease-out;
+}
+.detail-modal.hidden { display: none; }
+@keyframes detailFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.detail-close {
+  position: fixed;
+  top: 14px; right: 14px;
+  z-index: 2;
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.detail-close:hover { background: #fff; border-color: var(--ink); }
+.detail-close svg { width: 18px; height: 18px; }
+
+.detail-stage {
+  display: grid;
+  gap: 0;
+  grid-template-columns: 1fr;
+  min-height: 100vh;
+}
+.detail-media {
+  margin: 0;
+  position: relative;
+  background: var(--bg-surface);
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+  padding: 72px 24px 24px;
+}
+.detail-media img {
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto; height: auto;
+  object-fit: contain;
+  display: block;
+}
+.detail-media .status-chip {
+  position: absolute;
+  top: 24px; left: 24px;
+}
+
+.detail-info {
+  padding: 28px 24px 60px;
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  border-top: 1px solid var(--line);
+}
+.detail-brand {
+  margin: 0;
+  font-family: "Jost", sans-serif;
+  font-size: 0.74rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.detail-name {
+  margin: 0;
+  font-family: "Fraunces", "Cormorant Garamond", serif;
+  font-size: clamp(1.65rem, 5vw, 2.2rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+  color: var(--ink);
+}
+
+.detail-specs {
+  display: grid;
+  gap: 0;
+  margin: 4px 0 0;
+  border-top: 1px solid var(--line);
+}
+.detail-specs .spec {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: baseline;
+}
+.detail-specs dt {
+  font-family: "Jost", sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.detail-specs dd {
+  margin: 0;
+  font-family: "Jost", sans-serif;
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+.detail-specs dd.price {
+  font-family: "Fraunces", serif;
+  font-size: 1.1rem;
+  letter-spacing: -0.005em;
+}
+
+.detail-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 6px;
+}
+@media (min-width: 520px) {
+  .detail-actions { grid-template-columns: auto 1fr; }
+}
+.detail-wish {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 18px;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+}
+.detail-wish svg { color: var(--ink-soft); transition: color 0.2s ease; }
+.detail-wish.is-active svg { color: var(--ink); }
+.detail-wa {
+  padding: 14px 18px;
+  font-size: 0.76rem;
+  letter-spacing: 0.16em;
+  text-align: center;
+  white-space: nowrap;
+}
+.detail-share {
+  justify-self: start;
+  margin-top: 4px;
+  font-size: 0.7rem;
+}
+
+/* Desktop: split horizontal */
+@media (min-width: 820px) {
+  .detail-stage {
+    grid-template-columns: 1.15fr 1fr;
+    min-height: 100vh;
+  }
+  .detail-media {
+    padding: 80px 40px 40px;
+    min-height: 100vh;
+    border-right: 1px solid var(--line);
+  }
+  .detail-media img { max-height: 80vh; }
+  .detail-info {
+    padding: 72px 48px 48px;
+    border-top: 0;
+    align-content: center;
+  }
+  .detail-name { font-size: clamp(2rem, 3vw, 2.6rem); }
+  .detail-close { top: 20px; right: 20px; }
+}
+
+/* Modal abierto: bloquear scroll del body */
+body.detail-open { overflow: hidden; }
+
+/* Card hoverable hint: el cursor indica que abre el detalle */
+.product-card { cursor: pointer; }
+.product-card .wishlist-btn,
+.product-card .notify-button,
+.product-card .wa-button { cursor: pointer; }
+
+/* ===========================================================
    9. ADMIN PANEL
    =========================================================== */
 .admin-panel {

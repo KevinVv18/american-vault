@@ -112,6 +112,9 @@ async function init() {
   syncFilterInputs();
   renderAll();
 
+  // Deep-link ?id=xxx: abrir modal del producto si vino en la URL.
+  openDetailFromURL();
+
   // Si el callback trajo un error, lo mostramos en el modal (reabierto).
   if (authFlow.pendingError) {
     openPasswordModalWithError(authFlow.pendingError);
@@ -220,6 +223,21 @@ function cacheElements() {
   elements.wishlistClientList   = document.getElementById('wishlistClientList');
   elements.wishlistClearBtn     = document.getElementById('wishlistClearBtn');
   elements.wishlistWhatsappBtn  = document.getElementById('wishlistWhatsappBtn');
+
+  // Product detail modal (deep-link ?id=)
+  elements.detailModal          = document.getElementById('productDetailModal');
+  elements.detailCloseBtn       = document.getElementById('detailCloseBtn');
+  elements.detailImage          = document.getElementById('detailImage');
+  elements.detailStatusChip     = document.getElementById('detailStatusChip');
+  elements.detailBrand          = document.getElementById('detailBrand');
+  elements.detailName           = document.getElementById('detailName');
+  elements.detailColor          = document.getElementById('detailColor');
+  elements.detailPrice          = document.getElementById('detailPrice');
+  elements.detailStock          = document.getElementById('detailStock');
+  elements.detailWishBtn        = document.getElementById('detailWishBtn');
+  elements.detailWishLabel      = document.getElementById('detailWishLabel');
+  elements.detailWaBtn          = document.getElementById('detailWaBtn');
+  elements.detailShareBtn       = document.getElementById('detailShareBtn');
 }
 
 function bindEvents() {
@@ -320,9 +338,21 @@ function bindEvents() {
   elements.wishlistClearBtn.addEventListener('click', clearClientWishlist);
   elements.wishlistWhatsappBtn.addEventListener('click', sendClientWishlistWhatsapp);
 
+  // Product detail modal
+  elements.detailCloseBtn.addEventListener('click', closeProductDetail);
+  elements.detailWishBtn.addEventListener('click', handleDetailWishToggle);
+  elements.detailShareBtn.addEventListener('click', handleDetailShare);
+
+  // Back del navegador cierra el detalle si esta abierto.
+  window.addEventListener('popstate', handlePopState);
+
   // Escape cierra modales/drawers
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (!elements.detailModal.classList.contains('hidden')) {
+        closeProductDetail();
+        return;
+      }
       closePasswordModal();
       closeNotifyModal();
       closeDrawer();
@@ -459,7 +489,8 @@ function closePasswordModal() {
 }
 
 // Lee hash/query al cargar: extrae error del callback de Supabase y marca
-// ?admin=1 para abrir el panel tras confirmar la sesion. Limpia la URL al salir.
+// ?admin=1 para abrir el panel tras confirmar la sesion. Mantiene ?id= si
+// viene (se consume luego por abrirDetalleDesdeURL). Limpia lo demas.
 function parseAuthCallback() {
   const url = new URL(window.location.href);
 
@@ -487,12 +518,29 @@ function parseAuthCallback() {
     authFlow.wantsAdminOpen = true;
   }
 
-  // Limpia la URL para que recargar no vuelva a disparar el flujo ni muestre
-  // parametros feos en la barra de direcciones.
-  if (url.searchParams.has('admin') || url.hash) {
+  // Limpia solo los parametros de auth (?admin, #error) — dejamos ?id= para
+  // que el deep-link siga disponible y sea compartible si el usuario copia URL.
+  const needsClean = url.searchParams.has('admin') || (url.hash && url.hash.includes('error'));
+  if (needsClean) {
     url.searchParams.delete('admin');
     const clean = url.origin + url.pathname + (url.search ? url.search : '');
     window.history.replaceState(null, '', clean);
+  }
+}
+
+// Si la URL trae ?id=xxx y el producto existe, abrimos el modal automaticamente.
+function openDetailFromURL() {
+  const url = new URL(window.location.href);
+  const id = url.searchParams.get('id');
+  if (!id) return;
+  const product = state.products.find((p) => p.id === id);
+  if (product) {
+    openProductDetail(product, { pushHistory: false });
+  } else {
+    // El id en la URL no corresponde a ningun producto (eliminado o link viejo).
+    // Limpiamos el parametro en silencio.
+    url.searchParams.delete('id');
+    window.history.replaceState(null, '', url.toString());
   }
 }
 
@@ -591,6 +639,17 @@ function handleRealtimeChange({ event, product }) {
   renderBrandPills();
   renderColorSwatches();
   renderAll();
+
+  // Si el detalle abierto corresponde al producto cambiado, refrescamos;
+  // si fue eliminado, cerramos el modal.
+  if (detailCurrentId && detailCurrentId === product.id) {
+    if (event === 'DELETE') {
+      closeProductDetail();
+    } else {
+      const fresh = state.products.find((p) => p.id === detailCurrentId);
+      if (fresh) renderProductDetail(fresh);
+    }
+  }
 
   // Si soy admin y acaba de llegar/habilitarse un producto, chequear wishlist.
   if (state.isAdmin && (event === 'INSERT' || event === 'UPDATE')) {
@@ -706,8 +765,10 @@ function renderCatalogAndStats() {
 function cardHTML(product) {
   const status = getStatus(product);
   const isOut = status.className === 'out';
+  // Deep-link al producto para que el cliente llegue al mismo item desde WA.
+  const deepLink = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(product.id)}`;
   const waText = encodeURIComponent(
-    `Hola, me interesa la *${product.name}* (${product.brand}) — S/${product.price}. ID: ${product.id}`
+    `Hola, me interesa la *${product.name}* (${product.brand}) — S/${product.price}. Link: ${deepLink}`
   );
   const waHref = `${WHATSAPP_URL}?text=${waText}`;
   const liked = state.wishlistLocal.has(product.id);
@@ -766,24 +827,41 @@ function cardHTML(product) {
 function handleGridClick(e) {
   const wishBtn = e.target.closest('[data-action="wishlist"]');
   if (wishBtn) {
+    e.stopPropagation();
     const id = wishBtn.dataset.id;
-    if (state.wishlistLocal.has(id)) state.wishlistLocal.delete(id);
-    else state.wishlistLocal.add(id);
-    localStorage.setItem(LS_WISHLIST, JSON.stringify([...state.wishlistLocal]));
+    toggleWishlistLocal(id);
     const isActive = state.wishlistLocal.has(id);
     wishBtn.classList.toggle('is-active', isActive);
     wishBtn.setAttribute('aria-pressed', String(isActive));
     wishBtn.setAttribute('aria-label', isActive ? 'Quitar de wishlist' : 'Agregar a wishlist');
-    renderWishlistTopCount();
     return;
   }
 
   const notifyBtn = e.target.closest('[data-action="notify"]');
   if (notifyBtn) {
+    e.stopPropagation();
     const id = notifyBtn.dataset.id;
     const product = state.products.find((p) => p.id === id);
     openNotifyModal(product);
+    return;
   }
+
+  // Click en "Pedir por WhatsApp" usa su propio href; solo lo dejamos pasar.
+  if (e.target.closest('.wa-button')) return;
+
+  // Cualquier otra zona de la card abre el detalle.
+  const card = e.target.closest('.product-card');
+  if (!card) return;
+  const id = card.dataset.id;
+  const product = state.products.find((p) => p.id === id);
+  if (product) openProductDetail(product, { pushHistory: true });
+}
+
+function toggleWishlistLocal(id) {
+  if (state.wishlistLocal.has(id)) state.wishlistLocal.delete(id);
+  else state.wishlistLocal.add(id);
+  localStorage.setItem(LS_WISHLIST, JSON.stringify([...state.wishlistLocal]));
+  renderWishlistTopCount();
 }
 
 // ---------- Wishlist top bubble + drawer cliente ----------
@@ -854,11 +932,180 @@ function sendClientWishlistWhatsapp() {
     .map((id) => state.products.find((p) => p.id === id))
     .filter(Boolean);
   if (!items.length) return;
-  const lines = items.map((p) => `- ${p.name} (${p.brand}) — S/${p.price}`);
+  const origin = `${window.location.origin}${window.location.pathname}`;
+  const lines = items.map((p) =>
+    `- ${p.name} (${p.brand}) — S/${p.price}\n  ${origin}?id=${encodeURIComponent(p.id)}`
+  );
   const text = encodeURIComponent(
     `Hola, me interesan estas carteras del catalogo American Vault:\n${lines.join('\n')}`
   );
   window.open(`${WHATSAPP_URL}?text=${text}`, '_blank', 'noopener');
+}
+
+// ---------- Product detail modal (deep-link ?id=) -----------
+// Abre la ficha del producto a pantalla completa y empuja ?id= al history.
+// Si el producto cambia por realtime mientras el modal esta abierto, lo
+// re-renderizamos para mantener stock/precio sincronizados.
+let detailCurrentId = null;
+
+function openProductDetail(product, { pushHistory = true } = {}) {
+  if (!product) return;
+  detailCurrentId = product.id;
+  renderProductDetail(product);
+  elements.detailModal.classList.remove('hidden');
+  elements.detailModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('detail-open');
+
+  // Push al history solo si no venimos de un popstate (evita duplicar).
+  if (pushHistory) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('id', product.id);
+    window.history.pushState({ detailId: product.id }, '', url.toString());
+  }
+}
+
+function closeProductDetail({ popHistory = true } = {}) {
+  if (detailCurrentId === null) return;
+  detailCurrentId = null;
+  elements.detailModal.classList.add('hidden');
+  elements.detailModal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('detail-open');
+
+  if (popHistory) {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('id')) {
+      url.searchParams.delete('id');
+      window.history.pushState(null, '', url.toString());
+    }
+  }
+}
+
+function renderProductDetail(product) {
+  const status = getStatus(product);
+  const isOut = status.className === 'out';
+  const liked = state.wishlistLocal.has(product.id);
+
+  elements.detailImage.src = product.imageUrl || FALLBACK_IMAGE;
+  elements.detailImage.onerror = () => { elements.detailImage.src = FALLBACK_IMAGE; };
+  elements.detailImage.alt = `Cartera ${product.name}`;
+
+  elements.detailStatusChip.className = `status-chip ${status.className}`;
+  elements.detailStatusChip.textContent = status.label;
+
+  elements.detailBrand.textContent = product.brand;
+  elements.detailName.textContent = product.name;
+  elements.detailColor.textContent = product.color || '—';
+  elements.detailPrice.textContent = formatCurrency(product.price);
+  elements.detailPrice.classList.add('price');
+  elements.detailStock.textContent = isOut ? 'Agotado' : `${product.stock} disponibles`;
+
+  // Wishlist button refleja el estado actual.
+  elements.detailWishBtn.classList.toggle('is-active', liked);
+  elements.detailWishLabel.textContent = liked ? 'Guardado en wishlist' : 'Guardar en wishlist';
+
+  // WhatsApp: link con deep-link al catalogo, NO con UUID crudo.
+  const deepLink = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(product.id)}`;
+  let msg;
+  if (isOut) {
+    msg = `Hola, me interesa reservar la *${product.name}* (${product.brand}). Precio referencial S/${product.price}. Link: ${deepLink}`;
+  } else {
+    msg = `Hola, me interesa la *${product.name}* (${product.brand}) — S/${product.price}. Link: ${deepLink}`;
+  }
+  elements.detailWaBtn.href = `${WHATSAPP_URL}?text=${encodeURIComponent(msg)}`;
+  elements.detailWaBtn.textContent = isOut ? 'Preguntar por disponibilidad' : 'Pedir por WhatsApp';
+
+  // Share nativo: solo mostrar si el navegador lo soporta.
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    elements.detailShareBtn.classList.remove('hidden');
+  } else {
+    elements.detailShareBtn.classList.add('hidden');
+  }
+}
+
+function handleDetailWishToggle() {
+  if (!detailCurrentId) return;
+  toggleWishlistLocal(detailCurrentId);
+  const liked = state.wishlistLocal.has(detailCurrentId);
+  elements.detailWishBtn.classList.toggle('is-active', liked);
+  elements.detailWishLabel.textContent = liked ? 'Guardado en wishlist' : 'Guardar en wishlist';
+  // Repintar las cards para que el corazon se actualice tambien.
+  renderCatalogAndStats();
+}
+
+async function handleDetailShare() {
+  if (!detailCurrentId) return;
+  const product = state.products.find((p) => p.id === detailCurrentId);
+  if (!product) return;
+
+  const deepLink = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(product.id)}`;
+  const baseShare = {
+    title: `${product.brand} — ${product.name}`,
+    text: `${product.name} (${product.brand}) — S/${product.price}`,
+    url: deepLink
+  };
+
+  // Intento 1: share con la imagen como archivo (soportado en iOS 15+,
+  // Android Chrome moderno). Asi el contacto recibe la foto directamente
+  // ademas del link, util para WhatsApp / mensajes.
+  try {
+    if (product.imageUrl && typeof navigator.canShare === 'function') {
+      const res = await fetch(product.imageUrl, { mode: 'cors' });
+      if (res.ok) {
+        const blob = await res.blob();
+        const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+        const name = `${slug(product.brand)}-${slug(product.name)}.${ext}`;
+        const file = new File([blob], name, { type: blob.type });
+        const withFile = { ...baseShare, files: [file] };
+        if (navigator.canShare(withFile)) {
+          await navigator.share(withFile);
+          return;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Share con imagen fallo, intentando solo URL:', err);
+  }
+
+  // Intento 2: share basico (solo texto + url).
+  try {
+    if (navigator.share) {
+      await navigator.share(baseShare);
+      return;
+    }
+  } catch (err) {
+    if (err?.name !== 'AbortError') console.warn('Share cancelado:', err);
+    return;
+  }
+
+  // Fallback final: copiar el link al portapapeles.
+  try {
+    await navigator.clipboard?.writeText(deepLink);
+  } catch { /* silencio */ }
+}
+
+function slug(text) {
+  return String(text ?? '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 40) || 'item';
+}
+
+function handlePopState(event) {
+  // Al navegar back/forward, sincronizar el modal con ?id= de la URL.
+  const url = new URL(window.location.href);
+  const id = url.searchParams.get('id');
+  if (id) {
+    const product = state.products.find((p) => p.id === id);
+    if (product) {
+      openProductDetail(product, { pushHistory: false });
+    } else {
+      closeProductDetail({ popHistory: false });
+    }
+  } else {
+    closeProductDetail({ popHistory: false });
+  }
 }
 
 // ---------- Notify-me modal (cliente) ----------
