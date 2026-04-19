@@ -58,6 +58,15 @@ const state = {
 const elements = {};
 let unsubscribeWishlist = null;
 
+// Estado del flujo magic-link: banner global de error + cooldown de reenvio.
+const authFlow = {
+  pendingError: null,       // { title, detail } cuando el callback trae #error=
+  wantsAdminOpen: false,    // true cuando la URL trae ?admin=1
+  magicSentTo: null,        // email al que mandamos el ultimo enlace
+  resendAt: 0,              // timestamp (ms) desde el cual se puede reenviar
+  resendTimer: null
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   init().catch((error) => {
     console.error(error);
@@ -69,6 +78,9 @@ async function init() {
   cacheElements();
   bindEvents();
   setTopWhatsapp();
+
+  // Parsear ?admin=1 y #error=... antes de tocar la sesion; limpia la URL.
+  parseAuthCallback();
 
   const session = await getSession();
   applySession(session);
@@ -99,6 +111,27 @@ async function init() {
   renderColorSwatches();
   syncFilterInputs();
   renderAll();
+
+  // Si el callback trajo un error, lo mostramos en el modal (reabierto).
+  if (authFlow.pendingError) {
+    openPasswordModalWithError(authFlow.pendingError);
+    authFlow.pendingError = null;
+  }
+  // Si el callback fue exitoso y ?admin=1 estaba en la URL, lleva al panel.
+  if (authFlow.wantsAdminOpen && state.isAdmin) {
+    authFlow.wantsAdminOpen = false;
+    setTimeout(() => {
+      elements.adminPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 180);
+  } else if (authFlow.wantsAdminOpen && !state.isAdmin) {
+    // Redirigieron con ?admin=1 pero la sesion no cuajo: probablemente
+    // Supabase no logro crear la sesion. Mostramos modal para reintentar.
+    authFlow.wantsAdminOpen = false;
+    openPasswordModalWithError({
+      title: 'No pudimos iniciar tu sesion.',
+      detail: 'Vuelve a pedir el enlace magico o entra con tu contrasena.'
+    });
+  }
 }
 
 function cacheElements() {
@@ -302,19 +335,62 @@ async function handlePasswordSubmit() {
 }
 
 async function handleMagicLink() {
+  // Respeta el cooldown: si todavia estamos en ventana de reenvio, ignoramos.
+  if (Date.now() < authFlow.resendAt) return;
+
   const email = elements.emailInput.value;
   if (!email) {
+    elements.passwordMessage.classList.remove('success');
     elements.passwordMessage.textContent = 'Escribe tu correo primero.';
     return;
   }
+
+  // Feedback optimista antes de la llamada.
+  elements.magicLinkButton.disabled = true;
+  elements.passwordMessage.classList.remove('success');
+  elements.passwordMessage.textContent = 'Enviando enlace...';
+
   try {
     await sendMagicLink(email);
-    elements.passwordMessage.textContent =
-      'Te enviamos un enlace magico. Abrelo desde el correo.';
+    authFlow.magicSentTo = email.trim();
+    authFlow.resendAt = Date.now() + 60_000;
+    elements.passwordMessage.classList.add('success');
+    elements.passwordMessage.innerHTML =
+      `Te enviamos un enlace a <strong>${escapeHtml(email)}</strong>. ` +
+      `Abrelo desde ese mismo dispositivo (expira en 10 min). ` +
+      `Si no aparece, revisa Spam / Promociones.`;
+    startResendCooldown();
   } catch (error) {
+    elements.magicLinkButton.disabled = false;
+    elements.passwordMessage.classList.remove('success');
     elements.passwordMessage.textContent =
       `No se pudo enviar el enlace: ${error?.message ?? 'error desconocido'}.`;
   }
+}
+
+function startResendCooldown() {
+  if (authFlow.resendTimer) clearInterval(authFlow.resendTimer);
+  const baseLabel = 'Prefiero recibir un enlace magico por correo';
+  const tick = () => {
+    const remaining = Math.max(0, Math.ceil((authFlow.resendAt - Date.now()) / 1000));
+    if (remaining <= 0) {
+      clearInterval(authFlow.resendTimer);
+      authFlow.resendTimer = null;
+      if (elements.magicLinkButton) {
+        elements.magicLinkButton.disabled = false;
+        elements.magicLinkButton.textContent = 'Reenviar enlace magico';
+      }
+      return;
+    }
+    if (elements.magicLinkButton) {
+      elements.magicLinkButton.disabled = true;
+      elements.magicLinkButton.textContent = `Reenviar en ${remaining}s`;
+    }
+  };
+  tick();
+  authFlow.resendTimer = setInterval(tick, 1000);
+  // Evitamos el valor original asignado en HTML tras el primer tick.
+  void baseLabel;
 }
 
 function handleLockButton() {
@@ -322,16 +398,78 @@ function handleLockButton() {
     signOut();
     return;
   }
+  openPasswordModal();
+}
+
+function openPasswordModal() {
+  elements.passwordMessage.classList.remove('success');
   elements.passwordMessage.textContent = '';
   elements.emailInput.value = '';
   elements.passwordInput.value = '';
   elements.passwordModal.classList.remove('hidden');
   elements.emailInput.focus();
+  // Re-aplica cooldown si quedo colgado (p.ej. usuario reabrio el modal).
+  if (Date.now() < authFlow.resendAt) startResendCooldown();
+  else if (elements.magicLinkButton) {
+    elements.magicLinkButton.disabled = false;
+    elements.magicLinkButton.textContent = 'Prefiero recibir un enlace magico por correo';
+  }
+}
+
+function openPasswordModalWithError({ title, detail }) {
+  openPasswordModal();
+  elements.passwordMessage.classList.remove('success');
+  elements.passwordMessage.innerHTML =
+    `<strong>${escapeHtml(title)}</strong><br/>${escapeHtml(detail)}`;
+  // Si tenemos el correo que uso, pre-llenamos para facilitar el reintento.
+  if (authFlow.magicSentTo) {
+    elements.emailInput.value = authFlow.magicSentTo;
+    elements.passwordInput.focus();
+  }
 }
 
 function closePasswordModal() {
   elements.passwordModal.classList.add('hidden');
   elements.passwordMessage.textContent = '';
+  elements.passwordMessage.classList.remove('success');
+}
+
+// Lee hash/query al cargar: extrae error del callback de Supabase y marca
+// ?admin=1 para abrir el panel tras confirmar la sesion. Limpia la URL al salir.
+function parseAuthCallback() {
+  const url = new URL(window.location.href);
+
+  // Supabase devuelve errores como #error=...&error_code=...&error_description=...
+  if (url.hash && url.hash.includes('error')) {
+    const params = new URLSearchParams(url.hash.slice(1));
+    const code = params.get('error_code') || params.get('error') || '';
+    const raw = params.get('error_description') || '';
+    const detail = raw.replace(/\+/g, ' ');
+
+    let title = 'No pudimos iniciar tu sesion.';
+    if (code === 'otp_expired') {
+      title = 'El enlace magico expiro.';
+    } else if (code === 'access_denied') {
+      title = 'El enlace no es valido.';
+    }
+    authFlow.pendingError = {
+      title,
+      detail: detail || 'Pide un nuevo enlace o entra con contrasena.'
+    };
+  }
+
+  // ?admin=1 es nuestra marca post-callback para abrir el panel automaticamente.
+  if (url.searchParams.get('admin') === '1') {
+    authFlow.wantsAdminOpen = true;
+  }
+
+  // Limpia la URL para que recargar no vuelva a disparar el flujo ni muestre
+  // parametros feos en la barra de direcciones.
+  if (url.searchParams.has('admin') || url.hash) {
+    url.searchParams.delete('admin');
+    const clean = url.origin + url.pathname + (url.search ? url.search : '');
+    window.history.replaceState(null, '', clean);
+  }
 }
 
 // ---------- Drawers ----------

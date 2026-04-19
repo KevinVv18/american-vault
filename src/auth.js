@@ -15,9 +15,13 @@ export async function signInWithPassword(email, password) {
 }
 
 export async function sendMagicLink(email) {
+  // Redirect siempre a la raiz del sitio con ?admin=1 para que el callback
+  // abra el panel automaticamente. Usamos origin+pathname (sin hash/query
+  // previos) para que Supabase no rechace la URL.
+  const redirectTo = `${window.location.origin}${window.location.pathname}?admin=1`;
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim(),
-    options: { emailRedirectTo: window.location.href }
+    options: { emailRedirectTo: redirectTo }
   });
   if (error) throw error;
 }

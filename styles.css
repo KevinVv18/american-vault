@@ -1024,14 +1024,29 @@ button, input, select, textarea { font: inherit; color: inherit; }
   transition: color 0.2s ease, border-color 0.2s ease;
 }
 .link-button:hover { color: var(--ink); border-bottom-color: var(--ink); }
+.link-button:disabled,
+.link-button[disabled] {
+  color: var(--ink-mute, #9a9a9a);
+  border-bottom-color: transparent;
+  cursor: default;
+  opacity: 0.72;
+}
+.link-button:disabled:hover,
+.link-button[disabled]:hover {
+  border-bottom-color: transparent;
+  color: var(--ink-mute, #9a9a9a);
+}
 .form-message {
   margin: 0; min-height: 18px;
   font-family: "Jost", sans-serif;
   font-size: 0.8rem;
+  line-height: 1.5;
   color: var(--danger);
   letter-spacing: 0.02em;
 }
+.form-message strong { font-weight: 500; color: var(--ink); letter-spacing: 0.04em; }
 .form-message.success { color: var(--success); }
+.form-message.success strong { color: var(--success); }
 
 /* Notify-me modal — tarjeta de producto embebida, editorial */
 .notify-product-card {
