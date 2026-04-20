@@ -526,6 +526,15 @@
   }
   </script>
 
+  <!-- modulepreload: arranca la descarga de three.js + loaders EN PARALELO al HTML
+       parsing. Cuando hero.js llama a init3D() el modulo ya esta en cache, asi
+       que el tiempo a primer frame 3D baja. DEBE ir despues del importmap para
+       que los especificadores "three" y "three/addons/" resuelvan.
+       crossorigin es requerido por CORS de unpkg. -->
+  <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/build/three.module.js" />
+  <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/loaders/GLTFLoader.js" />
+  <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/environments/RoomEnvironment.js" />
+
   <script type="module" src="app.js"></script>
   <script type="module" src="src/hero.js"></script>
 </body>

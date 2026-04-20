@@ -50,6 +50,8 @@ jobs:
             --exclude=README.md
             --exclude=.gitignore
             --exclude=temp_blog_html.txt
+            --exclude=*.fbx
+            --exclude=3D/
           path: ./
           remote_path: /home/u567580447/domains/american-vault.com/public_html/
           remote_host: 89.116.115.11

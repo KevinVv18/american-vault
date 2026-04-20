@@ -830,10 +830,12 @@ function renderCatalogAndStats() {
     return;
   }
 
-  elements.catalogGrid.innerHTML = filtered.map(cardHTML).join('');
+  // Pasamos el indice al cardHTML: los primeros ~6 items son LCP candidates
+  // en desktop (arriba del fold), asi que reciben fetchpriority=high + eager.
+  elements.catalogGrid.innerHTML = filtered.map((p, i) => cardHTML(p, i)).join('');
 }
 
-function cardHTML(product) {
+function cardHTML(product, index = 99) {
   const status = getStatus(product);
   const isOut = status.className === 'out';
   // Deep-link al producto para que el cliente llegue al mismo item desde WA.
@@ -848,15 +850,29 @@ function cardHTML(product) {
   const waHref = `${WHATSAPP_URL}?text=${waText}`;
   const liked = state.wishlistLocal.has(product.id);
 
+  // Imagen responsiva: srcset con 4 widths via Supabase transforms.
+  // Los primeros 6 items (fold desktop) son LCP candidates: eager + high prio.
+  // Resto: lazy + auto prio. Width/height explicitos => aspect-ratio estable,
+  // cero CLS al montar el grid.
+  const img = buildImageSources(product.imageUrl);
+  const isAboveFold = index < 6;
+  const loadingAttr = isAboveFold ? 'eager' : 'lazy';
+  const fetchPrioAttr = isAboveFold ? 'high' : 'auto';
+  const srcsetAttr = img.srcset ? ` srcset="${escapeAttribute(img.srcset)}"` : '';
+  const sizesAttr  = img.sizes  ? ` sizes="${escapeAttribute(img.sizes)}"`   : '';
+
   return `
     <article class="product-card${isOut ? ' is-out' : ''}" data-id="${escapeAttribute(product.id)}">
       <div class="product-image-wrap">
         <img
           class="product-image"
-          src="${escapeAttribute(product.imageUrl)}"
+          src="${escapeAttribute(img.src)}"${srcsetAttr}${sizesAttr}
+          width="600" height="800"
           alt="${escapeAttribute(`Cartera ${product.name}`)}"
-          loading="lazy"
-          onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}'"
+          loading="${loadingAttr}"
+          decoding="async"
+          fetchpriority="${fetchPrioAttr}"
+          onerror="this.onerror=null;this.srcset='';this.src='${FALLBACK_IMAGE}'"
         />
         <button class="wishlist-btn${liked ? ' is-active' : ''}" type="button"
                 data-action="wishlist"
@@ -974,9 +990,14 @@ function renderClientWishlistDrawer() {
   elements.wishlistClearBtn.disabled = false;
 
   elements.wishlistClientList.innerHTML = items
-    .map((p) => `
+    .map((p) => {
+      // Thumbnails en el drawer: 400w basta (columna angosta, off-viewport al inicio).
+      const thumb = buildImageSources(p.imageUrl, { sizes: '96px' });
+      const thumbSrcset = thumb.srcset ? ` srcset="${escapeAttribute(thumb.srcset)}"` : '';
+      const thumbSizes  = thumb.sizes  ? ` sizes="${escapeAttribute(thumb.sizes)}"`   : '';
+      return `
       <div class="wishlist-client-item" data-id="${escapeAttribute(p.id)}">
-        <img src="${escapeAttribute(p.imageUrl)}" alt="" onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}'"/>
+        <img src="${escapeAttribute(thumb.src)}"${thumbSrcset}${thumbSizes} alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.srcset='';this.src='${FALLBACK_IMAGE}'"/>
         <div class="info">
           <strong>${escapeHtml(p.name)}</strong>
           <span>${escapeHtml(p.brand)} · ${escapeHtml(p.color)}</span>
@@ -986,7 +1007,8 @@ function renderClientWishlistDrawer() {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
       </div>
-    `)
+    `;
+    })
     .join('');
 }
 
@@ -1079,8 +1101,24 @@ function renderProductDetail(product) {
   const isOut = status.className === 'out';
   const liked = state.wishlistLocal.has(product.id);
 
-  elements.detailImage.src = product.imageUrl || FALLBACK_IMAGE;
-  elements.detailImage.onerror = () => { elements.detailImage.src = FALLBACK_IMAGE; };
+  // Detail modal: imagen grande, responsive. En mobile ocupa ~100vw, en
+  // desktop ~50vw del modal. Preferimos 1200w como src principal.
+  const detailImg = buildImageSources(product.imageUrl || FALLBACK_IMAGE, {
+    sizes: '(max-width: 900px) 100vw, 50vw'
+  });
+  elements.detailImage.src = detailImg.src;
+  if (detailImg.srcset) {
+    elements.detailImage.setAttribute('srcset', detailImg.srcset);
+    elements.detailImage.setAttribute('sizes', detailImg.sizes);
+  } else {
+    elements.detailImage.removeAttribute('srcset');
+    elements.detailImage.removeAttribute('sizes');
+  }
+  elements.detailImage.decoding = 'async';
+  elements.detailImage.onerror = () => {
+    elements.detailImage.removeAttribute('srcset');
+    elements.detailImage.src = FALLBACK_IMAGE;
+  };
   elements.detailImage.alt = `Cartera ${product.name}`;
 
   // Status inline: solo lo mostramos cuando aporta info (low/out/reserved).
@@ -1221,8 +1259,21 @@ function openNotifyModal(product = null) {
 
   if (product) {
     elements.notifyProductSummary.classList.remove('hidden');
-    elements.notifyProductImg.src = product.imageUrl || FALLBACK_IMAGE;
-    elements.notifyProductImg.onerror = () => { elements.notifyProductImg.src = FALLBACK_IMAGE; };
+    // Thumbnail del notify modal: 400w basta (preview pequeno).
+    const notifyImg = buildImageSources(product.imageUrl || FALLBACK_IMAGE, { sizes: '120px' });
+    elements.notifyProductImg.src = notifyImg.src;
+    if (notifyImg.srcset) {
+      elements.notifyProductImg.setAttribute('srcset', notifyImg.srcset);
+      elements.notifyProductImg.setAttribute('sizes', notifyImg.sizes);
+    } else {
+      elements.notifyProductImg.removeAttribute('srcset');
+      elements.notifyProductImg.removeAttribute('sizes');
+    }
+    elements.notifyProductImg.decoding = 'async';
+    elements.notifyProductImg.onerror = () => {
+      elements.notifyProductImg.removeAttribute('srcset');
+      elements.notifyProductImg.src = FALLBACK_IMAGE;
+    };
     elements.notifyProductName.textContent = product.name;
     elements.notifyProductBrand.textContent = product.brand;
     elements.notifyProductPrice.textContent = formatCurrency(product.price);
@@ -1845,3 +1896,44 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function escapeAttribute(value) { return escapeHtml(value); }
+
+// ---------- Responsive images ----------
+// Supabase Storage soporta transforms via el endpoint /render/image/public
+// en vez de /object/public. Nos permite servir variantes por ancho real sin
+// re-subir archivos. Para URLs externas (stock, fallback local) devolvemos
+// la URL cruda — no hay pipe de transforms fuera de nuestro host.
+//
+// Widths elegidos para calzar con los breakpoints del CSS:
+//   400w -> cards en mobile (2 columnas, viewport ~400px)
+//   600w -> cards en tablet (2-3 columnas)
+//   900w -> cards en desktop (3-4 columnas)
+//   1200w -> detail modal en desktop
+const IMG_WIDTHS = [400, 600, 900, 1200];
+const SUPABASE_OBJECT_RE = /\/storage\/v1\/object\/public\//;
+
+function supabaseTransformedUrl(url, width) {
+  // Reapuntar al endpoint de render con width+quality. La URL original
+  // (/object/public/) sirve el archivo crudo; /render/image/public/ aplica
+  // el pipeline de transformaciones (resize + encode).
+  return url.replace(SUPABASE_OBJECT_RE, '/storage/v1/render/image/public/')
+         + (url.includes('?') ? '&' : '?')
+         + `width=${width}&quality=75`;
+}
+
+function isTransformableUrl(url) {
+  return typeof url === 'string' && SUPABASE_OBJECT_RE.test(url);
+}
+
+// Devuelve { src, srcset, sizes } listos para inyectar en un <img>.
+// Si la URL no es transformable, srcset/sizes van vacios y solo se usa src.
+function buildImageSources(url, { sizes = '(max-width: 600px) 50vw, (max-width: 1024px) 33vw, 25vw' } = {}) {
+  if (!isTransformableUrl(url)) {
+    return { src: url, srcset: '', sizes: '' };
+  }
+  const srcset = IMG_WIDTHS
+    .map((w) => `${supabaseTransformedUrl(url, w)} ${w}w`)
+    .join(', ');
+  // src apunta al width intermedio como fallback para browsers sin srcset.
+  const src = supabaseTransformedUrl(url, 600);
+  return { src, srcset, sizes };
+}

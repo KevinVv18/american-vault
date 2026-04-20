@@ -194,22 +194,35 @@ if (hero && bagSvg) {
     hasWebGL();
 
   if (canUse3D) {
-    // El hero es el primer fold; arranca inmediato tras un micro-delay
-    // que le da al navegador tiempo de layoutear el canvas.
-    setTimeout(() => {
+    // Diferimos init3D al primer idle tick: el browser termina layout+paint
+    // critico (SVG fallback, fonts, first contentful paint del hero) y
+    // RECIEN ahi parseamos three.js + armamos la escena. modulepreload en
+    // el HTML ya arranco la descarga en paralelo, asi que cuando init3D
+    // corre no hay fetch — solo parse + execute.
+    //
+    // Safari no tiene requestIdleCallback (aun). Fallback a setTimeout 180ms,
+    // margen razonable para que termine el primer paint en mobile lento.
+    // Timeout de 1500ms en rIC evita que se quede esperando si la pagina
+    // nunca llega a idle (scroll continuo, animaciones).
+    const kick = () => {
       init3D().catch(err => {
         console.warn('[hero3D] fallo, se queda silueta SVG:', err);
       });
-    }, 0);
+    };
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(kick, { timeout: 1500 });
+    } else {
+      setTimeout(kick, 180);
+    }
   }
 
   // ==========================================================
   // Three.js init
   // ==========================================================
   async function init3D() {
-    const [THREE, { FBXLoader }, { RoomEnvironment }] = await Promise.all([
+    const [THREE, { GLTFLoader }, { RoomEnvironment }] = await Promise.all([
       import('three'),
-      import('three/addons/loaders/FBXLoader.js'),
+      import('three/addons/loaders/GLTFLoader.js'),
       import('three/addons/environments/RoomEnvironment.js')
     ]);
 
@@ -318,33 +331,32 @@ if (hero && bagSvg) {
       });
     }));
 
-    // --- cargar FBX ---
-    // El FBX trae referencias embedidas a .png que no estan en disco
-    // (usamos nuestros WebP optimizados en /textures). Con un LoadingManager
-    // que intercepta URLs de imagen y las apunta a un 1x1 inline, evitamos
-    // 12 requests 404 y mantenemos el loader contento.
-    const blankPx = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-    const fbxManager = new THREE.LoadingManager();
-    fbxManager.setURLModifier((url) => {
-      // si el FBX pide texturas cercanas (png/jpg/tga/bmp), devolvemos blank
-      if (/\.(png|jpg|jpeg|tga|bmp|gif)(\?.*)?$/i.test(url)) return blankPx;
-      return url;
-    });
-    const loader = new FBXLoader(fbxManager);
-    const model = await new Promise((resolve, reject) => {
+    // --- cargar GLB ---
+    // Migramos de FBX a GLB (scripts/convert-fbx-to-glb.mjs lo genera offline).
+    // Wins:
+    //   - GLB ya viene con vertices mergeados (20% mas chico que el FBX crudo)
+    //   - GLTFLoader pesa ~20KB vs ~80KB del FBXLoader
+    //   - Binary glTF parsea ~3x mas rapido que FBX binario en el motor de three
+    //   - Las 7 PointLights de Blender ya estan removidas en el offline step
+    //   - No hay referencias fantasma a .png embedidos (evita el LoadingManager
+    //     hack que teniamos antes).
+    //
+    // El GLB trae materiales placeholder; el remapeo por nombre de mesh
+    // (lower/metal/upper -> MeshStandardMaterial con nuestras WebP) sigue
+    // siendo la fuente de verdad visual abajo.
+    const loader = new GLTFLoader();
+    const gltf = await new Promise((resolve, reject) => {
       loader.load(
-        'assets/3d/handbag/handbag.fbx',
-        (obj) => resolve(obj),
+        'assets/3d/handbag/handbag.glb',
+        (g) => resolve(g),
         undefined,
         reject
       );
     });
+    const model = gltf.scene;
 
-    // ROOT CAUSE del render blanco (sesion anterior): el FBX trae 7 PointLights
-    // embedidas de la escena de Blender original con intensidades 100-3000.
-    // Al agregar el modelo a nuestra escena, esas luces se suman a las
-    // nuestras (key/rim/fill) y revientan el PBR — el cuero negro se lee
-    // como superficie blanca. Las barremos antes de procesar los meshes.
+    // Defensivo: si alguna vez regeneramos el GLB con un pipeline distinto
+    // que reintroduzca luces, las filtramos igual (cheap check, no harm).
     const strayLights = [];
     model.traverse((child) => {
       if (child.isLight) strayLights.push(child);
