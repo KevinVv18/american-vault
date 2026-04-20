@@ -106,7 +106,16 @@
              alt="American Vault" width="280" height="193" decoding="async" />
       </div>
 
-      <div class="hero-stage" id="heroStage">
+      <!-- Frame editorial (desktop): la cartera queda centrada con dos
+           columnas laterales que pintan texto vertical rotado ±90°.
+           Las columnas son display:none en mobile (<860px) para no quitar
+           ancho a la cartera. La row del grid sigue siendo 1fr. -->
+      <div class="hero-stage-frame">
+        <aside class="hero-side hero-side-left" aria-hidden="true">
+          <p>Importado&nbsp;·&nbsp;Auténtico&nbsp;·&nbsp;Perú</p>
+        </aside>
+
+        <div class="hero-stage" id="heroStage">
         <!-- canvas 3D: se activa cuando three.js carga la cartera real -->
         <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
 
@@ -125,7 +134,12 @@
             <ellipse cx="150" cy="342" rx="96" ry="4" fill="currentColor" stroke="none" opacity="0.09"/>
           </svg>
         </div>
-      </div>
+        </div><!-- /.hero-stage -->
+
+        <aside class="hero-side hero-side-right" aria-hidden="true">
+          <p>Est.&nbsp;·&nbsp;2025&nbsp;·&nbsp;Lima</p>
+        </aside>
+      </div><!-- /.hero-stage-frame -->
 
       <!-- Grain editorial: textura fina que viaja en parallax sobre la
            escena. Hace el hero sentirse impreso, no renderizado. Se

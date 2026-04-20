@@ -252,6 +252,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
   opacity: 0.94;
 }
 
+/* Frame editorial: 3 columnas en desktop para que la cartera quede
+   "enmarcada" por texto vertical a cada lado (IMPORTADO·AUTÉNTICO·PERÚ
+   izq / EST·2025·LIMA der). En mobile las columnas laterales son
+   display:none y el stage ocupa todo el ancho. El frame es el que
+   hereda la row 2 (1fr) del hero-sticky; internamente centra el stage.
+   min-height:0 permite que el grid row no se estire de mas en Firefox. */
+.hero-stage-frame {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  width: 100%;
+  min-height: 0;
+  align-items: stretch;
+}
+
 .hero-stage {
   position: relative;
   display: grid;
@@ -264,6 +279,68 @@ button, input, select, textarea { font: inherit; color: inherit; }
      Valores default para antes de que three.js arranque (silueta SVG). */
   --shadow-width: 42%;
   --shadow-opacity: 0.18;
+}
+
+/* ---- Hero side ornaments (desktop-only) ----
+   Dos columnas de texto vertical que flanquean la cartera. Jost 300,
+   small caps, tracking extra wide, opacity baja: leen como marca de
+   agua editorial. No deben competir con el foco central (la cartera);
+   refuerzan la identidad luxe-magazine y la promesa de marca.
+   Mobile: display:none — la cartera necesita todo el ancho. */
+.hero-side {
+  display: none;
+}
+.hero-side p {
+  margin: 0;
+  white-space: nowrap;
+  font-family: "Jost", sans-serif;
+  font-weight: 300;
+  font-size: clamp(0.6rem, 0.72vw, 0.74rem);
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+@media (min-width: 860px) {
+  .hero-stage-frame {
+    /* auto | 1fr | auto: las sides solo piden el ancho de su texto
+       rotado (~48-64px), la cartera se queda con el 1fr central. */
+    grid-template-columns: clamp(48px, 5.2vw, 72px) minmax(0, 1fr) clamp(48px, 5.2vw, 72px);
+    gap: clamp(14px, 2vw, 28px);
+  }
+  .hero-side {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .hero-side-left p {
+    /* -90deg: el texto "IMPORTADO · AUTÉNTICO · PERÚ" se lee de abajo
+       hacia arriba, con la P final arriba. Convencional para sidebars
+       editoriales (magazine spine). */
+    transform: rotate(-90deg);
+    transform-origin: center;
+  }
+  .hero-side-right p {
+    /* +90deg: "EST · 2025 · LIMA" se lee de arriba hacia abajo, con
+       el punto final abajo. Simetria visual con el left (ambos textos
+       corren "hacia la cartera" — el ojo vuelve al centro). */
+    transform: rotate(90deg);
+    transform-origin: center;
+  }
+  /* Hairline vertical sutil detras del texto: un trazo de 1px que
+     arranca y termina en el texto (sin tocarlo), sugiere marco
+     editorial sin volverse decoración. Alineado al lado de la cartera
+     (derecha en left-side, izquierda en right-side). */
+  .hero-side::before {
+    content: "";
+    position: absolute;
+    top: 12%;
+    bottom: 12%;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.14);
+  }
+  .hero-side-left::before  { right: 0; }
+  .hero-side-right::before { left:  0; }
 }
 /* Sombra/reflejo de contacto bajo la cartera. Sobre fondo negro no podemos
    pintar una sombra "mas oscura" — asi que usamos un highlight blanco
