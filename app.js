@@ -144,6 +144,7 @@ function cacheElements() {
   elements.wishlistTopBtn       = document.getElementById('wishlistTopBtn');
   elements.wishlistTopCount     = document.getElementById('wishlistTopCount');
   elements.adminNotice          = document.getElementById('adminNotice');
+  elements.flashMessage         = document.getElementById('flashMessage');
 
   // Catalog
   elements.pageCount            = document.getElementById('pageCount');
@@ -244,6 +245,13 @@ function bindEvents() {
   // Topbar
   elements.lockButton.addEventListener('click', handleLockButton);
   elements.wishlistTopBtn.addEventListener('click', openWishlistDrawer);
+
+  // Flash banner close (delegado: solo hay un boton dentro)
+  if (elements.flashMessage) {
+    elements.flashMessage.addEventListener('click', (e) => {
+      if (e.target.closest('.flash-close')) hideFlash();
+    });
+  }
 
   // Pills (delegated)
   elements.brandPills.addEventListener('click', handleBrandPillClick);
@@ -528,7 +536,31 @@ function parseAuthCallback() {
   }
 }
 
+// ---------- Flash message (aviso editorial, dead-link recovery) ----------
+// Pattern: un solo banner reutilizable. autoDismissMs=0 desactiva el timer.
+// role=status en HTML -> lectores de pantalla lo anuncian sin interrumpir.
+let flashTimer = null;
+function showFlash(message, { autoDismissMs = 6000 } = {}) {
+  const el = elements.flashMessage;
+  if (!el) return;
+  const textEl = el.querySelector('.flash-text');
+  if (textEl) textEl.textContent = message;
+  el.classList.remove('hidden');
+  if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+  if (autoDismissMs > 0) {
+    flashTimer = setTimeout(() => hideFlash(), autoDismissMs);
+  }
+}
+function hideFlash() {
+  const el = elements.flashMessage;
+  if (!el) return;
+  el.classList.add('hidden');
+  if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+}
+
 // Si la URL trae ?id=xxx y el producto existe, abrimos el modal automaticamente.
+// Si no existe (producto eliminado o link compartido viejo), recuperamos la
+// experiencia leyendo el param auxiliar ?b= (brand) para sugerir algo similar.
 function openDetailFromURL() {
   const url = new URL(window.location.href);
   const id = url.searchParams.get('id');
@@ -536,11 +568,25 @@ function openDetailFromURL() {
   const product = state.products.find((p) => p.id === id);
   if (product) {
     openProductDetail(product, { pushHistory: false });
+    return;
+  }
+
+  // Dead link: limpiamos los params y avisamos al usuario con un toast editorial.
+  // Si el link trae &b=<brand>, aplicamos ese filtro para que vea piezas similares
+  // de la misma marca en vez de un catalogo generico.
+  const brandHint = url.searchParams.get('b');
+  url.searchParams.delete('id');
+  url.searchParams.delete('b');
+  window.history.replaceState(null, '', url.toString());
+
+  if (brandHint && state.products.some((p) => p.brand === brandHint)) {
+    state.filters.brand = brandHint;
+    renderBrandPills();
+    renderCatalogAndStats();
+    renderActiveFiltersBadge();
+    showFlash(`Esa pieza ya se fue. Te dejamos lo que tenemos en ${brandHint}.`);
   } else {
-    // El id en la URL no corresponde a ningun producto (eliminado o link viejo).
-    // Limpiamos el parametro en silencio.
-    url.searchParams.delete('id');
-    window.history.replaceState(null, '', url.toString());
+    showFlash('Esa pieza ya se fue. Mira el catalogo completo abajo.');
   }
 }
 
@@ -759,10 +805,26 @@ function renderCatalogAndStats() {
   }
 
   if (!filtered.length) {
+    // Empty state editorial con lead capture. Monograma "AV" muteado como
+    // marca-agua + copy que convierte el dead-end en oportunidad: "avisame
+    // cuando llegue algo parecido" pre-lleva los filtros activos al modal.
+    // data-action sirve para que el wiring del click funcione via
+    // event delegation (no re-bindeamos en cada render).
     elements.catalogGrid.innerHTML = `
       <article class="empty-state">
-        <h3>No hay resultados</h3>
-        <p>Ajusta la marca, color o el rango de precios.</p>
+        <svg class="empty-mark" viewBox="0 0 100 100" aria-hidden="true"
+             fill="none" stroke="currentColor" stroke-width="1.6"
+             stroke-linecap="square" stroke-linejoin="miter">
+          <line x1="35" y1="10" x2="75" y2="90"/>
+          <line x1="25" y1="90" x2="50" y2="40"/>
+          <line x1="75" y1="10" x2="50" y2="40"/>
+          <line x1="36" y1="68" x2="64" y2="68"/>
+        </svg>
+        <h3>Nada calza con tu busqueda.</h3>
+        <p>Dejanos tu WhatsApp y te avisamos en cuanto llegue una pieza que calce con lo que estas buscando.</p>
+        <button class="btn btn-primary" type="button" data-action="notify-from-filters">
+          Avisame cuando llegue
+        </button>
       </article>
     `;
     return;
@@ -775,7 +837,11 @@ function cardHTML(product) {
   const status = getStatus(product);
   const isOut = status.className === 'out';
   // Deep-link al producto para que el cliente llegue al mismo item desde WA.
-  const deepLink = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(product.id)}`;
+  // Incluye &b=<brand> como fallback: si el producto ya no existe (vendido,
+  // eliminado), openDetailFromURL filtra el catalogo por esa marca y muestra
+  // un toast "esa pieza ya se fue, mira estas" — recuperamos intencion de
+  // compra en vez de mostrar un vacio inexplicable.
+  const deepLink = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(product.id)}&b=${encodeURIComponent(product.brand)}`;
   const waText = encodeURIComponent(
     `Hola, me interesa la *${product.name}* (${product.brand}) — S/${product.price}. Link: ${deepLink}`
   );
@@ -852,6 +918,15 @@ function handleGridClick(e) {
     const id = notifyBtn.dataset.id;
     const product = state.products.find((p) => p.id === id);
     openNotifyModal(product);
+    return;
+  }
+
+  // Lead capture desde empty state: abre el notify modal pre-llenado con
+  // los filtros activos (ver openNotifyModal(null) para el pre-fill).
+  const notifyFromFilters = e.target.closest('[data-action="notify-from-filters"]');
+  if (notifyFromFilters) {
+    e.stopPropagation();
+    openNotifyModal(null);
     return;
   }
 
@@ -943,7 +1018,9 @@ function sendClientWishlistWhatsapp() {
   if (!items.length) return;
   const origin = `${window.location.origin}${window.location.pathname}`;
   const lines = items.map((p) =>
-    `- ${p.name} (${p.brand}) — S/${p.price}\n  ${origin}?id=${encodeURIComponent(p.id)}`
+    // &b= permite recuperar la experiencia si el producto murio (openDetailFromURL
+    // filtra por marca y muestra toast cuando el id no resuelve).
+    `- ${p.name} (${p.brand}) — S/${p.price}\n  ${origin}?id=${encodeURIComponent(p.id)}&b=${encodeURIComponent(p.brand)}`
   );
   const text = encodeURIComponent(
     `Hola, me interesan estas carteras del catalogo American Vault:\n${lines.join('\n')}`
@@ -1028,7 +1105,9 @@ function renderProductDetail(product) {
   elements.detailWishLabel.textContent = liked ? 'Guardado en wishlist' : 'Guardar en wishlist';
 
   // WhatsApp: link con deep-link al catalogo, NO con UUID crudo.
-  const deepLink = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(product.id)}`;
+  // &b=<brand> es un fallback: si el producto desaparece, openDetailFromURL
+  // aplica el filtro de marca y muestra un toast editorial en lugar de vacio.
+  const deepLink = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(product.id)}&b=${encodeURIComponent(product.brand)}`;
   let msg;
   if (isOut) {
     msg = `Hola, me interesa reservar la *${product.name}* (${product.brand}). Precio referencial S/${product.price}. Link: ${deepLink}`;
@@ -1061,7 +1140,8 @@ async function handleDetailShare() {
   const product = state.products.find((p) => p.id === detailCurrentId);
   if (!product) return;
 
-  const deepLink = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(product.id)}`;
+  // &b=<brand> = fallback para cuando el id muere (ver openDetailFromURL).
+  const deepLink = `${window.location.origin}${window.location.pathname}?id=${encodeURIComponent(product.id)}&b=${encodeURIComponent(product.brand)}`;
   const baseShare = {
     title: `${product.brand} — ${product.name}`,
     text: `${product.name} (${product.brand}) — S/${product.price}`,
@@ -1150,6 +1230,13 @@ function openNotifyModal(product = null) {
     elements.notifyMaxPrice.value = product.price ? Math.ceil(product.price) : '';
   } else {
     elements.notifyProductSummary.classList.add('hidden');
+    // Sin producto especifico: si el usuario abre el modal desde el empty
+    // state con filtros activos, pre-llenamos brand/maxPrice para ahorrar
+    // tipeo. 'all' significa "sin filtro" — lo ignoramos.
+    const fb = state.filters || {};
+    if (fb.brand && fb.brand !== 'all') elements.notifyBrandHint.value = fb.brand;
+    const maxFilter = toNumberOrNull(fb.maxPrice);
+    if (maxFilter) elements.notifyMaxPrice.value = String(maxFilter);
   }
 
   elements.notifyModal.classList.remove('hidden');

@@ -169,6 +169,15 @@
 
   <div id="adminNotice" class="admin-notice hidden"></div>
 
+  <!-- Flash message: aparece cuando un deep-link no resuelve, cuando se -->
+  <!-- recupera con filtro, etc. Auto-dismiss a los 6s, o cerrar manual. -->
+  <div id="flashMessage" class="flash-message hidden" role="status" aria-live="polite">
+    <span class="flash-text"></span>
+    <button type="button" class="flash-close" aria-label="Cerrar aviso">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+    </button>
+  </div>
+
   <!-- 3. BRAND PILLS ------------------------------------------- -->
   <nav id="brandPills" class="brand-pills" aria-label="Filtrar por marca"></nav>
 

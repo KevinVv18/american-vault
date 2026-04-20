@@ -138,13 +138,6 @@ if (hero && bagSvg) {
     const squash   = 1 - edgeness * 0.08;
     bagSvg.style.transform = `rotateY(${deg}deg) scale(${squash})`;
 
-    // Grain parallax: drift vertical sutil (foreground se siente mas cerca
-    // que la textura). 64px de recorrido a lo largo del hero (2 pantallas)
-    // es apenas perceptible — objetivo buscado: sentirlo, no verlo.
-    if (!prefersReduced) {
-      hero.style.setProperty('--grain-y', `${(p * -64).toFixed(1)}px`);
-    }
-
     // Actos editoriales: togglear .is-in por rango.
     // Si reduce-motion esta on, actEls ya tienen .is-in y no tocamos nada.
     if (!prefersReduced && actEls.length) {

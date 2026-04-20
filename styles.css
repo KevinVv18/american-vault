@@ -314,47 +314,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: block;
 }
 
-.hero-foot {
-  display: grid;
-  gap: 8px;
-  justify-items: center;
-  text-align: center;
-  padding-bottom: 4px;
-}
-.hero-wordmark {
-  margin: 0;
-  font-family: "Jost", sans-serif;
-  font-weight: 300;
-  letter-spacing: 0.42em;
-  font-size: clamp(1rem, 3.4vw, 1.35rem);
-  text-transform: uppercase;
-  color: #fff;
-}
-.hero-tagline {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: clamp(0.78rem, 2.4vw, 0.9rem);
-  letter-spacing: 0.02em;
-  max-width: 340px;
-  line-height: 1.4;
-}
-.hero-scroll-hint {
-  margin-top: 18px;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  font-family: "Jost", sans-serif;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.66rem;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  transition: opacity 0.25s ease;
-}
-.hero-scroll-hint svg {
-  opacity: 0.8;
-  animation: heroScrollBob 2.2s ease-in-out infinite;
-}
+/* heroScrollBob: la flecha del CTA del acto 3 la sigue usando.
+   Las reglas del viejo .hero-foot / .hero-wordmark / .hero-tagline /
+   .hero-scroll-hint se purgaron — el markup nuevo son los .hero-acts. */
 @keyframes heroScrollBob {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(5px); }
@@ -496,11 +458,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
      llega al bg claro al fondo del hero. */
   opacity: 0.11;
   mix-blend-mode: screen;
-  transform: translate3d(0, var(--grain-y, 0px), 0);
-  will-change: transform;
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero-grain { transform: none; }
+  /* Grain estatico: la variante con parallax (translateY por scroll)
+     disparaba repaints del stacking context con mix-blend-mode en cada
+     tick, y en mobile de gama baja producia jank perceptible. El
+     movimiento era de solo 64px sobre 200vh — imperceptible para el
+     usuario y costoso para el compositor. Lo dejamos quieto. */
 }
 
 /* Topbar invertido cuando el hero ocupa la vista.
@@ -529,7 +491,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .hero-vault { height: 100vh; }
   .hero-bag   { transform: rotateY(16deg); }
-  .hero-scroll-hint { animation: none; }
 }
 
 /* ===========================================================
@@ -572,6 +533,46 @@ button, input, select, textarea { font: inherit; color: inherit; }
   text-align: center;
 }
 .admin-notice strong { font-weight: 600; }
+
+/* Flash message — banner editorial (dead-link recovery, avisos puntuales).
+   Nada estridente: hairline border, tipografia baja, auto-dismiss desde JS. */
+.flash-message {
+  max-width: 1400px;
+  margin: 0 auto 14px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 0.86rem;
+  letter-spacing: 0.01em;
+  animation: flashIn 0.35s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.flash-message.hidden { display: none; }
+.flash-message .flash-text { flex: 1; }
+.flash-message .flash-close {
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+.flash-message .flash-close:hover { color: var(--ink); }
+.flash-message .flash-close svg { width: 16px; height: 16px; }
+@keyframes flashIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash-message { animation: none; }
+}
 
 /* ===========================================================
    3. BRAND PILLS — tipograficas (sin relleno)
@@ -729,6 +730,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
   flex-direction: column;
   gap: 14px;
   position: relative;
+  /* Hover/tap lift: feedback tactil sutil. Solo aplica donde hay
+     hover real (desktop) y con active para el tap mobile. Los
+     reduce-motion users ven la card quieta (override abajo). */
+  transition: transform 0.28s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+@media (hover: hover) {
+  .product-card:hover { transform: translateY(-3px); }
+}
+.product-card:active {
+  transform: translateY(0) scale(0.992);
+  transition: transform 0.1s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-card,
+  .product-card:hover,
+  .product-card:active { transform: none; transition: none; }
 }
 .product-image-wrap {
   position: relative;
@@ -840,10 +857,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border-top: 1px solid var(--line);
 }
 .product-price {
-  font-family: "Jost", sans-serif;
-  font-size: 0.95rem;
+  /* Editorial: Fraunces en vez de Jost. El precio en serif se lee como
+     cifra de coleccionista, no como tag de ecommerce. tabular-nums
+     mantiene los digitos alineados entre cards (1.299 y 899 ocupan
+     el mismo ancho por digito). */
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.08rem;
   font-weight: 500;
-  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
 }
 .product-stock {
   font-size: 0.7rem;
@@ -923,15 +945,25 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .notify-button svg { display: none; }
 
 /* Empty state: silencio editorial, sin panel de fondo gris.
-   Solo tipografia centrada con hairlines arriba y abajo. */
+   Ahora con monograma AV como marca-agua + CTA de lead capture
+   (pre-llena filtros al notify modal). Tipografia centrada con
+   hairlines arriba y abajo. */
 .empty-state {
   grid-column: 1 / -1;
-  padding: 80px 24px;
+  padding: 72px 24px 80px;
   text-align: center;
   color: var(--ink-soft);
   background: transparent;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+}
+.empty-state .empty-mark {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 22px;
+  display: block;
+  color: var(--ink);
+  opacity: 0.22;
 }
 .empty-state h3 {
   margin: 0 0 10px;
@@ -949,7 +981,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   margin-right: auto;
   line-height: 1.5;
 }
-.empty-state .btn { margin-top: 22px; }
+.empty-state .btn { margin-top: 26px; }
 
 /* ===========================================================
    6. DRAWER (side sheet)
