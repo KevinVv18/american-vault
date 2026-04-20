@@ -35,7 +35,7 @@
     "@type": "Store",
     "name": "American Vault",
     "url": "https://american-vault.com/",
-    "logo": "https://american-vault.com/AV%20LOGO/1.png",
+    "logo": "https://american-vault.com/assets/brand/icon-av-black.png",
     "image": "https://american-vault.com/stock/default-bag.jpg",
     "description": "Catalogo curado de carteras autenticas importadas. Entregas en Peru.",
     "address": { "@type": "PostalAddress", "addressCountry": "PE" },
@@ -48,7 +48,8 @@
   }
   </script>
 
-  <link rel="icon" type="image/png" href="AV%20LOGO/1.png" />
+  <link rel="icon" type="image/svg+xml" href="assets/brand/icon-av-black.svg" />
+  <link rel="alternate icon" type="image/png" href="assets/brand/icon-av-black.png" />
   <link rel="canonical" href="https://american-vault.com/" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -98,15 +99,11 @@
   <section class="hero-vault" id="heroVault" aria-label="Intro American Vault">
     <div class="hero-sticky">
       <div class="hero-top">
-        <!-- Logo AV monograma: inline para que currentColor herede blanco del hero -->
-        <svg class="hero-logo" viewBox="0 0 100 100" fill="none" stroke="currentColor"
-             stroke-width="2.2" stroke-linecap="square" stroke-linejoin="miter"
-             aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-          <line x1="35" y1="10" x2="75" y2="90"/>
-          <line x1="25" y1="90" x2="50" y2="40"/>
-          <line x1="75" y1="10" x2="50" y2="40"/>
-          <line x1="36" y1="68" x2="64" y2="68"/>
-        </svg>
+        <!-- Lockup oficial: monograma AV + wordmark "AMERICAN VAULT" en blanco.
+             El archivo ya viene blanco (fill:#fff), asi que en el hero negro
+             se ve tal cual. width=auto, scalado por .hero-logo en styles.css. -->
+        <img class="hero-logo" src="assets/brand/logo-av-white.svg"
+             alt="American Vault" width="280" height="193" decoding="async" />
       </div>
 
       <div class="hero-stage" id="heroStage">
@@ -138,13 +135,13 @@
 
       <div class="hero-acts" id="heroActs">
         <div class="hero-act" data-act="1" aria-hidden="true">
-          <p>USA a Perú.</p>
+          <p>Cada pieza, 100% original.</p>
         </div>
         <div class="hero-act" data-act="2" aria-hidden="true">
-          <p>Cada pieza, auténtica.</p>
+          <p>Hasta agotar stock.</p>
         </div>
         <div class="hero-act" data-act="3">
-          <p>Lista para ser tuya.</p>
+          <p>Enviamos a todo el Perú.</p>
           <a href="#catalogGrid" class="hero-act-cta">
             <span>Ver catálogo</span>
             <svg viewBox="0 0 12 22" width="9" height="16" aria-hidden="true">

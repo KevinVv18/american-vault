@@ -217,14 +217,19 @@ button, input, select, textarea { font: inherit; color: inherit; }
   top: 0;
   height: 100vh;
   display: grid;
+  /* 3 rows: top (logo lockup) | stage (3D) | acts (headlines).
+     gap 28-36px garantiza "aire" visible entre la cartera y tanto el
+     logo de arriba como las frases de abajo, incluso cuando el canvas
+     fill 100% del row del medio. */
   grid-template-rows: auto 1fr auto;
   align-items: center;
-  gap: 18px;
-  /* Padding bottom mas generoso para que la linea inferior de la
-     cartera no alcance el fade visible aun girando de perfil. El
-     modelo se sube ~8% en hero.js y aqui le damos 70-110px abajo:
-     juntos dejan la cartera flotando sin tocar el fondo. */
-  padding: clamp(80px, 13vh, 120px) 24px clamp(70px, 11vh, 110px);
+  gap: clamp(28px, 4vh, 40px);
+  /* Padding superior mas generoso que antes (96-136px vs 80-120px): el
+     lockup oficial incluye wordmark "AMERICAN VAULT" bajo el monograma,
+     asi que el bloque es mas alto y necesita colchon superior.
+     Padding inferior (70-110px) sin cambios — sigue protegiendo el
+     fade cuando la cartera gira de perfil. */
+  padding: clamp(96px, 14vh, 136px) 24px clamp(70px, 11vh, 110px);
   overflow: hidden;
   perspective: 1400px;
   perspective-origin: 50% 55%;
@@ -238,12 +243,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
   opacity: 0.95;
 }
 .hero-logo {
-  width: clamp(56px, 12vw, 84px);
+  /* Lockup vertical (monograma + wordmark). Tamaño calibrado para que
+     el wordmark "AMERICAN VAULT" se lea claro en mobile sin dominar la
+     escena. viewBox del SVG es 492.22 × 338.51 (ratio ~1.45:1). */
+  width: clamp(132px, 28vw, 200px);
   height: auto;
   display: block;
-  /* El SVG hereda currentColor: blanco aqui porque el hero tiene color:#fff */
-  color: #fff;
-  opacity: 0.92;
+  opacity: 0.94;
 }
 
 .hero-stage {
@@ -299,7 +305,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hero-stage.hero-has-3d .hero-bag    { opacity: 0; visibility: hidden; }
 
 .hero-bag {
-  width: clamp(190px, 58vw, 340px);
+  /* Cap reducido (vs 58vw antes): el nuevo lockup del logo es mas alto
+     y los acts de abajo necesitan mas aire; un bag mas compacto mantiene
+     la silueta como foco central sin invadir el logo ni los headlines. */
+  width: clamp(170px, 50vw, 300px);
   aspect-ratio: 300 / 360;
   color: #ffffff;
   transform-style: preserve-3d;
@@ -749,14 +758,27 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .product-image-wrap {
   position: relative;
-  aspect-ratio: 3 / 4;
+  /* Ratio mas flexible (4/5 = 1.25 vs 3/4 = 1.33): un poco mas cuadrado
+     compensa la perdida de densidad visual al pasar de cover a contain,
+     y reduce el letterbox sobre fotos mas verticales que el ratio. */
+  aspect-ratio: 4 / 5;
   overflow: hidden;
   background: var(--bg-surface);
   /* sin border-radius ni shadow: foto plena, sin marco que compita */
 }
 .product-image {
   width: 100%; height: 100%;
-  object-fit: cover;
+  /* contain (no cover): mostrar la pieza COMPLETA sin recortar.
+     Algunas fotos traian proporciones verticales mayores a 3/4 y el
+     object-fit:cover les comia parte del herraje o del asa. Con
+     contain + aspect-ratio mas suave el letterbox queda minimo y la
+     silueta se ve entera. El padding interno da respiro editorial. */
+  object-fit: contain;
+  padding: clamp(10px, 2.4vw, 18px);
+  /* box-sizing border-box para que el padding no haga crecer el img
+     fuera de la caja del wrap (overflow hidden lo cortaria igual,
+     pero asi queda predecible). */
+  box-sizing: border-box;
   transition: transform 0.6s cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .product-card:hover .product-image { transform: scale(1.035); }
@@ -1298,8 +1320,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .detail-modal {
   position: fixed; inset: 0; z-index: 55;
   background: var(--bg);
-  display: grid;
+  /* display: block (default). Previo: grid rompia position:fixed de .detail-close
+     en algunos navegadores mobile — el containing block del hijo fixed caia sobre
+     el grid container en vez del viewport y el boton se iba fuera de pantalla.
+     .detail-stage sigue siendo grid abajo; el outer solo es un frame full-screen. */
   overflow-y: auto;
+  overflow-x: hidden;   /* defensivo: previene scroll horizontal de contenido largo */
   animation: detailFadeIn 0.22s ease-out;
 }
 .detail-modal.hidden { display: none; }
@@ -1308,9 +1334,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
   to { opacity: 1; }
 }
 .detail-close {
+  /* position: fixed relativo al viewport. En mobile Chrome/Safari esto ahora
+     funciona porque el padre ya no es display:grid (que creaba un containing
+     block alternativo bajo ciertas combinaciones con position:fixed). */
   position: fixed;
   top: 14px; right: 14px;
-  z-index: 2;
+  z-index: 60;          /* por encima del modal (z=55) y cualquier contenido interno */
   width: 42px; height: 42px;
   display: grid; place-items: center;
   background: rgba(255,255,255,0.88);

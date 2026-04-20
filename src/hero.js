@@ -403,10 +403,13 @@ if (hero && bagSvg) {
     model.position.y += size0.y * 0.08;
 
     const maxDim = Math.max(size0.x, size0.y, size0.z);
-    // altura visible objetivo en unidades 3D — algo mas chico que antes
-    // (1.55 vs 1.65) para que aunque gire 360 nunca roce el bottom del
-    // viewport sticky.
-    const target = 1.55;
+    // altura visible objetivo en unidades 3D.
+    // 1.30 (vs 1.55 antes): la cartera ocupa ~75% de la altura del
+    // canvas en vez de ~87%, dejando colchon vertical visible tanto
+    // hacia el logo lockup de arriba como hacia los headlines de abajo.
+    // Combinado con el upshift del 8% abajo, la silueta queda centrada
+    // visualmente con aire editorial por los 4 bordes.
+    const target = 1.30;
     const scale = target / maxDim;
     pivot.scale.setScalar(scale);
 
