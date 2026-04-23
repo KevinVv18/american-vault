@@ -145,6 +145,7 @@ function cacheElements() {
   elements.wishlistTopCount     = document.getElementById('wishlistTopCount');
   elements.adminNotice          = document.getElementById('adminNotice');
   elements.flashMessage         = document.getElementById('flashMessage');
+  elements.confirmModal         = document.getElementById('confirmModal');
 
   // Catalog
   elements.pageCount            = document.getElementById('pageCount');
@@ -556,6 +557,81 @@ function hideFlash() {
   if (!el) return;
   el.classList.add('hidden');
   if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+}
+
+// ---------- Confirm dialog (reemplazo branded de window.confirm) ----------
+// Promise<boolean>. Resuelve true al confirmar, false al cancelar.
+// Keyboard: Escape cancela, Enter confirma. Click en backdrop cancela.
+// El foco inicial cae en cancelar (convencion UX para acciones destructivas:
+// el default seguro es NO borrar; el usuario debe explicitar click o Enter).
+// Si por alguna razon no existe el markup, fallback al confirm() nativo.
+function confirmDialog({
+  title = '',
+  message = '',
+  confirmText = 'Confirmar',
+  cancelText = 'Cancelar',
+  danger = false
+} = {}) {
+  return new Promise((resolve) => {
+    const el = elements.confirmModal;
+    if (!el) { resolve(window.confirm(message || title)); return; }
+
+    const titleEl   = el.querySelector('.confirm-title');
+    const msgEl     = el.querySelector('.confirm-message');
+    const confirmBtn = el.querySelector('.confirm-ok');
+    const cancelBtn  = el.querySelector('.confirm-cancel');
+    if (!titleEl || !msgEl || !confirmBtn || !cancelBtn) {
+      resolve(window.confirm(message || title));
+      return;
+    }
+
+    titleEl.textContent = title;
+    msgEl.textContent   = message;
+    confirmBtn.textContent = confirmText;
+    cancelBtn.textContent  = cancelText;
+    confirmBtn.classList.toggle('is-danger', !!danger);
+
+    // Guardamos el elemento con foco previo para restaurarlo al cerrar
+    // (accesibilidad — no dejamos al usuario "flotando" sin foco).
+    const prevFocus = document.activeElement;
+
+    el.classList.remove('hidden');
+    el.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    // Focus initial: cancelar (default seguro en acciones destructivas).
+    // setTimeout para esperar a que el browser reconozca el display:grid
+    // despues del remove('hidden'); sin esto focus() puede fallar silencioso.
+    setTimeout(() => cancelBtn.focus(), 20);
+
+    function cleanup(result) {
+      el.classList.add('hidden');
+      el.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+      el.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey);
+      // Restaurar foco al elemento previo si sigue en el DOM.
+      if (prevFocus && typeof prevFocus.focus === 'function') {
+        try { prevFocus.focus(); } catch { /* ignore */ }
+      }
+      resolve(result);
+    }
+    function onConfirm() { cleanup(true); }
+    function onCancel()  { cleanup(false); }
+    function onBackdrop(e) {
+      // Solo cierra si el click fue directamente en el backdrop, no en el card.
+      if (e.target === el) cleanup(false);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); cleanup(false); }
+      else if (e.key === 'Enter') { e.preventDefault(); cleanup(true); }
+    }
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    el.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey);
+  });
 }
 
 // Si la URL trae ?id=xxx y el producto existe, abrimos el modal automaticamente.
@@ -1023,9 +1099,16 @@ function handleWishlistClientClick(e) {
   renderCatalogAndStats();
 }
 
-function clearClientWishlist() {
+async function clearClientWishlist() {
   if (!state.wishlistLocal.size) return;
-  if (!confirm('Vaciar toda tu wishlist?')) return;
+  const ok = await confirmDialog({
+    title: 'Vaciar tu wishlist?',
+    message: 'Se quitan todas las piezas que tenias guardadas. Esta accion no se puede deshacer.',
+    confirmText: 'Vaciar',
+    cancelText: 'Cancelar',
+    danger: true
+  });
+  if (!ok) return;
   state.wishlistLocal.clear();
   localStorage.setItem(LS_WISHLIST, JSON.stringify([]));
   renderClientWishlistDrawer();
@@ -1502,7 +1585,14 @@ async function handleWishlistAdminClick(e) {
   }
 
   if (action === 'delete-wish') {
-    if (!confirm(`Eliminar aviso de ${wish.whatsapp}?`)) return;
+    const ok = await confirmDialog({
+      title: 'Eliminar aviso?',
+      message: `Quitas el aviso de ${wish.whatsapp}. Si vuelven a llenar el formulario, entra de nuevo.`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      danger: true
+    });
+    if (!ok) return;
     try {
       await deleteWishlistEntry(id);
     } catch (err) {
@@ -1833,7 +1923,13 @@ async function handleAdminTableClick(event) {
   const product = state.products.find((p) => p.id === id);
   if (!product) return;
 
-  const ok = window.confirm(`Deseas eliminar "${product.name}" del catalogo?`);
+  const ok = await confirmDialog({
+    title: 'Eliminar del catalogo?',
+    message: `"${product.name}" se quita del catalogo publico. Sus fotos en Storage se preservan por si la subes de nuevo.`,
+    confirmText: 'Eliminar',
+    cancelText: 'Cancelar',
+    danger: true
+  });
   if (!ok) return;
 
   try {

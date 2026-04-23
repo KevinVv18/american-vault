@@ -99,11 +99,12 @@
   <section class="hero-vault" id="heroVault" aria-label="Intro American Vault">
     <div class="hero-sticky">
       <div class="hero-top">
-        <!-- Lockup oficial: monograma AV + wordmark "AMERICAN VAULT" en blanco.
-             El archivo ya viene blanco (fill:#fff), asi que en el hero negro
-             se ve tal cual. width=auto, scalado por .hero-logo en styles.css. -->
-        <img class="hero-logo" src="assets/brand/logo-av-white.svg"
-             alt="American Vault" width="280" height="193" decoding="async" />
+        <!-- Solo monograma AV (sin wordmark): el topbar ya muestra "American
+             Vault" como texto a pocos pixeles por encima, y tener el wordmark
+             duplicado aqui se lee redundante. El monograma solo refuerza la
+             marca sin repetir el nombre. ICONO BLANCO.svg (viewBox 223x260). -->
+        <img class="hero-logo" src="assets/brand/icon-av-white.svg"
+             alt="American Vault" width="223" height="260" decoding="async" />
       </div>
 
       <!-- Frame editorial (desktop): la cartera queda centrada con dos
@@ -187,6 +188,22 @@
     <button type="button" class="flash-close" aria-label="Cerrar aviso">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
     </button>
+  </div>
+
+  <!-- Confirm modal: reemplazo branded del window.confirm() nativo.
+       Usado para vaciar wishlist, eliminar avisos admin, eliminar producto,
+       y en fase 3 para borrar imagenes del editor multi-foto.
+       API: confirmDialog({ title, message, confirmText, cancelText, danger }) -> Promise<bool>
+       Esc cancela, Enter confirma, click fuera del card cancela. -->
+  <div id="confirmModal" class="confirm-modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+    <div class="confirm-card" role="document">
+      <h3 id="confirmTitle" class="confirm-title"></h3>
+      <p id="confirmMessage" class="confirm-message"></p>
+      <div class="confirm-actions">
+        <button type="button" class="confirm-cancel">Cancelar</button>
+        <button type="button" class="confirm-ok">Confirmar</button>
+      </div>
+    </div>
   </div>
 
   <!-- 3. BRAND PILLS ------------------------------------------- -->

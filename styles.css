@@ -217,19 +217,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
   top: 0;
   height: 100vh;
   display: grid;
-  /* 3 rows: top (logo lockup) | stage (3D) | acts (headlines).
-     gap 28-36px garantiza "aire" visible entre la cartera y tanto el
-     logo de arriba como las frases de abajo, incluso cuando el canvas
-     fill 100% del row del medio. */
+  /* 3 rows: top (monograma AV) | stage (3D) | acts (headlines).
+     gap 32-44px garantiza aire visible permanente entre la cartera y
+     tanto el logo de arriba como las frases de abajo — es el "margen
+     seguro" del hero: incluso con la cartera 3D girando 360 la silueta
+     nunca entra en ese colchon. */
   grid-template-rows: auto 1fr auto;
   align-items: center;
-  gap: clamp(28px, 4vh, 40px);
-  /* Padding superior mas generoso que antes (96-136px vs 80-120px): el
-     lockup oficial incluye wordmark "AMERICAN VAULT" bajo el monograma,
-     asi que el bloque es mas alto y necesita colchon superior.
-     Padding inferior (70-110px) sin cambios — sigue protegiendo el
-     fade cuando la cartera gira de perfil. */
-  padding: clamp(96px, 14vh, 136px) 24px clamp(70px, 11vh, 110px);
+  gap: clamp(32px, 4.2vh, 44px);
+  /* Padding superior: el monograma solo (vs el lockup completo que tenia
+     wordmark) ocupa menos alto, pero mantenemos 88-124px para preservar
+     aire respecto del topbar (56px) Y para que el "margen seguro" al bag
+     siga intacto despues de reducir la altura del logo.
+     Padding inferior (70-110px) sin cambios — sigue protegiendo el fade
+     cuando la cartera gira de perfil. */
+  padding: clamp(88px, 13vh, 124px) 24px clamp(70px, 11vh, 110px);
   overflow: hidden;
   perspective: 1400px;
   perspective-origin: 50% 55%;
@@ -243,10 +245,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   opacity: 0.95;
 }
 .hero-logo {
-  /* Lockup vertical (monograma + wordmark). Tamaño calibrado para que
-     el wordmark "AMERICAN VAULT" se lea claro en mobile sin dominar la
-     escena. viewBox del SVG es 492.22 × 338.51 (ratio ~1.45:1). */
-  width: clamp(132px, 28vw, 200px);
+  /* Solo monograma AV (sin wordmark). El topbar ya tiene "American Vault"
+     como texto — duplicarlo aqui pegado era redundante. Tamaño pequeño
+     a proposito: el monograma es un sello, no el titulo. viewBox SVG
+     223x260 (ratio ~0.86:1), asi que height ≈ width * 1.17. */
+  width: clamp(48px, 9vw, 72px);
   height: auto;
   display: block;
   opacity: 0.94;
@@ -660,6 +663,115 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .flash-message { animation: none; }
 }
 
+/* ---- Confirm modal (reemplazo de window.confirm) ----
+   API JS: confirmDialog({ title, message, confirmText, cancelText, danger }) -> Promise<bool>
+   Estetica editorial B&W: card con hairline border, tipografia dual
+   (Fraunces para titulo, Jost para message y buttons). Backdrop con
+   blur sutil. Escape cancela, Enter confirma, click en backdrop cancela.
+   z-index 70: por encima del detail (55) y su close (60), para que si
+   el usuario confirma algo desde dentro del detail se vea siempre arriba. */
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(0, 0, 0, 0.58);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  animation: confirmFadeIn 0.16s ease-out;
+}
+.confirm-modal.hidden { display: none; }
+.confirm-card {
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  max-width: 420px;
+  width: 100%;
+  padding: 28px 28px 24px;
+  animation: confirmPopIn 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.confirm-title {
+  margin: 0 0 10px;
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 400;
+  font-size: 1.28rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.confirm-message {
+  margin: 0 0 22px;
+  font-family: "Jost", sans-serif;
+  font-weight: 300;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.confirm-actions button {
+  padding: 11px 20px;
+  font-family: "Jost", sans-serif;
+  font-weight: 400;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 0;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.confirm-cancel {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+}
+.confirm-cancel:hover,
+.confirm-cancel:focus-visible {
+  color: var(--ink);
+  border-color: var(--ink);
+  outline: none;
+}
+.confirm-ok {
+  background: var(--ink);
+  color: var(--bg);
+  border: 1px solid var(--ink);
+}
+.confirm-ok:hover,
+.confirm-ok:focus-visible {
+  background: transparent;
+  color: var(--ink);
+  outline: none;
+}
+/* danger: misma estetica pero con tono rojo carbon muy sutil (no intrusivo).
+   Se usa para acciones destructivas (vaciar wishlist, eliminar producto). */
+.confirm-ok.is-danger {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+}
+.confirm-ok.is-danger:hover,
+.confirm-ok.is-danger:focus-visible {
+  background: transparent;
+  color: #1a1a1a;
+  border-color: #1a1a1a;
+}
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes confirmPopIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-modal,
+  .confirm-card { animation: none; }
+}
+
 /* ===========================================================
    3. BRAND PILLS — tipograficas (sin relleno)
    Editorial: texto minusculo + tracking + underline en activo.
@@ -835,26 +947,27 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .product-image-wrap {
   position: relative;
-  /* Ratio mas flexible (4/5 = 1.25 vs 3/4 = 1.33): un poco mas cuadrado
-     compensa la perdida de densidad visual al pasar de cover a contain,
-     y reduce el letterbox sobre fotos mas verticales que el ratio. */
-  aspect-ratio: 4 / 5;
+  /* aspect-ratio 3/4 (portrait estandar de fotografia de producto): las
+     fotos del catalogo son portrait (bag vertical + props), asi que un
+     wrap 3/4 las deja llenar casi edge-to-edge incluso con object-fit:
+     contain. Si una foto es mas portrait que 3/4 queda un letterbox
+     horizontal minimo; si es menos portrait, queda vertical minimo.
+     Previo 4/5 hacia los portraits ver "achatados" con letterbox lateral. */
+  aspect-ratio: 3 / 4;
   overflow: hidden;
   background: var(--bg-surface);
   /* sin border-radius ni shadow: foto plena, sin marco que compita */
 }
 .product-image {
   width: 100%; height: 100%;
-  /* contain (no cover): mostrar la pieza COMPLETA sin recortar.
-     Algunas fotos traian proporciones verticales mayores a 3/4 y el
-     object-fit:cover les comia parte del herraje o del asa. Con
-     contain + aspect-ratio mas suave el letterbox queda minimo y la
-     silueta se ve entera. El padding interno da respiro editorial. */
+  /* contain (no cover): mostrar la pieza COMPLETA sin recortar. Combinado
+     con aspect-ratio 3/4 arriba, fotos portrait estandar llenan el
+     frame edge-to-edge. Padding 0 (antes tenia 10-18px) — el padding
+     creaba letterbox gris alrededor y hacia que las fotos se vieran mas
+     chicas/encojidas. Con el fondo --bg-surface detras, si llega a haber
+     letterbox por mismatch de aspect ratio se lee como "marco" editorial
+     sin robar area a la foto. */
   object-fit: contain;
-  padding: clamp(10px, 2.4vw, 18px);
-  /* box-sizing border-box para que el padding no haga crecer el img
-     fuera de la caja del wrap (overflow hidden lo cortaria igual,
-     pero asi queda predecible). */
   box-sizing: border-box;
   transition: transform 0.6s cubic-bezier(0.22, 0.9, 0.3, 1);
 }
