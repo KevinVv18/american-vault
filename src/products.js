@@ -1,15 +1,53 @@
 import { supabase } from './supabase.js';
 import { FALLBACK_IMAGE } from './config.js';
 
+// ---------- Estilos validos (Fase 3) ----------
+// Debe coincidir con el CHECK constraint en supabase/schema.sql. Si agregas
+// uno aqui, agregalo tambien en el constraint y en la UI de filtros.
+export const STYLES = Object.freeze([
+  'crossbody', 'tote', 'satchel', 'clutch',
+  'bucket',    'hobo', 'shoulder', 'mini'
+]);
+
+export const STYLE_LABELS = Object.freeze({
+  crossbody: 'Crossbody',
+  tote:      'Tote',
+  satchel:   'Satchel',
+  clutch:    'Clutch',
+  bucket:    'Bucket',
+  hobo:      'Hobo',
+  shoulder:  'Shoulder',
+  mini:      'Mini'
+});
+
+export function isValidStyle(s) {
+  return typeof s === 'string' && STYLES.includes(s);
+}
+
 // ---------- Mapeo DB <-> UI ----------
 // La tabla usa snake_case, la UI sigue usando camelCase para no romper codigo.
 function fromRow(row) {
+  // Galeria Fase 3: images[] es la fuente primaria (array ordenado de URLs).
+  // Si la fila todavia no tiene images (producto legacy pre-migracion),
+  // sintetizamos la galeria con los campos viejos: [stock, home].
+  const rawGallery = Array.isArray(row.images) ? row.images.filter(Boolean) : [];
+  const rawPaths   = Array.isArray(row.image_paths) ? row.image_paths.filter(Boolean) : [];
+
   const stock = row.stock_image_url || '';
   const home  = row.image_url || '';
-  // primary: stock editorial si existe, sino la casera, sino el fallback.
-  // secondary: la casera cuando primary es stock (si no, null).
-  const primary   = stock || home || FALLBACK_IMAGE;
-  const secondary = stock && home ? home : null;
+
+  // Si el admin ya subio via multi-upload → usamos images[].
+  // Sino → sintetizamos la galeria de los campos legacy (stock primero).
+  const gallery = rawGallery.length > 0
+    ? rawGallery
+    : [stock, home].filter(Boolean);
+
+  // primary: primera de la galeria efectiva, sino fallback.
+  const primary = gallery[0] || FALLBACK_IMAGE;
+  // secondary (legacy para compat con codigo v4): la casera cuando
+  // primary viene de la stock/galeria y hay una casera distinta.
+  const secondary = (primary !== home && home) ? home : null;
+
   return {
     id:            row.id,
     name:          row.name ?? '',
@@ -19,8 +57,12 @@ function fromRow(row) {
     stock:         Number(row.stock ?? 0),
     available:     Boolean(row.available),
     status:        row.status ?? 'available',
-    imageUrl:      primary,                // primera (la que ve el cliente)
-    secondaryUrl:  secondary,              // foto casera, para swipe/hover
+    style:         isValidStyle(row.style) ? row.style : null,
+    // Galeria completa (para el modal de detalle: carousel/swipe).
+    images:        gallery,
+    imagePaths:    rawPaths,
+    imageUrl:      primary,                // principal (catalogo)
+    secondaryUrl:  secondary,              // legacy (compat con v4)
     stockImageUrl: row.stock_image_url ?? null,
     homeImageUrl:  row.image_url ?? null,
     imagePath:     row.image_path ?? null,
@@ -39,6 +81,9 @@ function toRow(p) {
   if (p.stock          !== undefined) row.stock           = p.stock;
   if (p.available      !== undefined) row.available       = p.available;
   if (p.status         !== undefined) row.status          = p.status;
+  if (p.style          !== undefined) row.style           = isValidStyle(p.style) ? p.style : null;
+  if (p.images         !== undefined) row.images          = Array.isArray(p.images) ? p.images.filter(Boolean) : [];
+  if (p.imagePaths     !== undefined) row.image_paths     = Array.isArray(p.imagePaths) ? p.imagePaths.filter(Boolean) : [];
   if (p.homeImageUrl   !== undefined) row.image_url       = p.homeImageUrl;
   if (p.imagePath      !== undefined) row.image_path      = p.imagePath;
   if (p.stockImageUrl  !== undefined) row.stock_image_url = p.stockImageUrl;
@@ -91,6 +136,30 @@ export async function uploadImage(file) {
   if (error) throw error;
   const { data } = supabase.storage.from('carteras').getPublicUrl(key);
   return { publicUrl: data.publicUrl, path: key };
+}
+
+// Multi-upload (Fase 3): sube varias fotos en paralelo y devuelve
+// arrays paralelos de URLs y paths, en el mismo orden de entrada.
+// Si alguna falla, tira el error (no deja fotos huerfanas a medio subir
+// — el caller puede decidir reintentar con las que quedaron).
+export async function uploadImages(files) {
+  const list = Array.from(files ?? []);
+  if (list.length === 0) return { publicUrls: [], paths: [] };
+
+  const results = await Promise.all(list.map((f) => uploadImage(f)));
+  return {
+    publicUrls: results.map((r) => r.publicUrl),
+    paths:      results.map((r) => r.path)
+  };
+}
+
+// Borra un objeto del bucket 'carteras' por path. Silencioso si falla
+// (el admin puede tener URLs externas que no viven en Storage, y eso no
+// es error — solo se limpia lo propio).
+export async function deleteImageByPath(path) {
+  if (!path) return;
+  const { error } = await supabase.storage.from('carteras').remove([path]);
+  if (error) console.warn('[storage] no se pudo borrar', path, error.message);
 }
 
 // ---------- Realtime ----------

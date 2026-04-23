@@ -177,19 +177,24 @@ async function main() {
     const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
 
     // 2) Insertar producto
+    //    Fase 3: escribimos la galeria nueva (images[]/image_paths[]) con una
+    //    sola foto. Mantenemos image_url/image_path por compat con clientes
+    //    que todavia no migraron. style queda null (el admin lo clasifica).
     const { error: insErr } = await supabase
       .from('products')
       .insert({
-        name:        displayName,
+        name:         displayName,
         brand,
-        color:       'Variado',
+        color:        'Variado',
         price,
-        stock:       1,
-        available:   true,
-        status:      'available',
-        image_url:   pub.publicUrl,
-        image_path:  storagePath,
-        source_file: fileName
+        stock:        1,
+        available:    true,
+        status:       'available',
+        images:       [pub.publicUrl],
+        image_paths:  [storagePath],
+        image_url:    pub.publicUrl,
+        image_path:   storagePath,
+        source_file:  fileName
       });
 
     if (insErr) {

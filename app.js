@@ -12,14 +12,17 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-  uploadImage,
+  uploadImages,
   subscribeChanges,
   createWishlistEntry,
   listWishlist,
   markWishlistNotified,
   deleteWishlistEntry,
   subscribeWishlist,
-  findMatchesForProduct
+  findMatchesForProduct,
+  STYLES,
+  STYLE_LABELS,
+  isValidStyle
 } from './src/products.js';
 import {
   getSession,
@@ -51,7 +54,16 @@ const state = {
     color: 'all',
     minPrice: '',
     maxPrice: '',
-    stock: 'all'
+    stock: 'all',
+    // Multi-select: Set de estilos activos. Set vacio = "todos".
+    // Usamos Set (no array) para toggle O(1) y dedup automatico.
+    styles: new Set()
+  },
+  // Galeria del modal de detalle (Fase 3). Se rellena cuando se abre
+  // un producto con >1 foto; null cuando esta cerrado.
+  detailGallery: {
+    images: [],      // URLs ordenadas
+    index: 0
   }
 };
 
@@ -107,7 +119,12 @@ async function init() {
     subscribeWishlistAdmin();
   }
 
+  // Leer ?brand=/?style= de la URL antes de renderizar, asi los pills
+  // arrancan con el estado correcto sin un flash de "todo seleccionado".
+  readFiltersFromURL();
+
   renderBrandPills();
+  renderStylePills();
   renderColorSwatches();
   syncFilterInputs();
   renderAll();
@@ -150,6 +167,7 @@ function cacheElements() {
   // Catalog
   elements.pageCount            = document.getElementById('pageCount');
   elements.brandPills           = document.getElementById('brandPills');
+  elements.stylePills           = document.getElementById('stylePills');
   elements.browsingInfo         = document.getElementById('browsingInfo');
   elements.openFiltersBtn       = document.getElementById('openFiltersBtn');
   elements.activeFiltersBadge   = document.getElementById('activeFiltersBadge');
@@ -190,6 +208,8 @@ function cacheElements() {
   elements.photoPreview         = document.getElementById('photoPreview');
   elements.photoPreviewInfo     = document.getElementById('photoPreviewInfo');
   elements.photoPreviewClear    = document.getElementById('photoPreviewClear');
+  elements.photoThumbs          = document.getElementById('photoThumbs');
+  elements.newStyle             = document.getElementById('newStyle');
   elements.brandSuggestions     = document.getElementById('brandSuggestions');
   elements.colorSuggestions     = document.getElementById('colorSuggestions');
   elements.wishlistList         = document.getElementById('wishlistList');
@@ -230,10 +250,17 @@ function cacheElements() {
   elements.detailModal          = document.getElementById('productDetailModal');
   elements.detailCloseBtn       = document.getElementById('detailCloseBtn');
   elements.detailImage          = document.getElementById('detailImage');
+  elements.detailMedia          = document.getElementById('detailMedia');
+  elements.detailGalPrev        = document.getElementById('detailGalPrev');
+  elements.detailGalNext        = document.getElementById('detailGalNext');
+  elements.detailGalCounter     = document.getElementById('detailGalCounter');
+  elements.detailGalDots        = document.getElementById('detailGalDots');
   elements.detailStatus         = document.getElementById('detailStatus');
   elements.detailBrand          = document.getElementById('detailBrand');
   elements.detailName           = document.getElementById('detailName');
   elements.detailColor          = document.getElementById('detailColor');
+  elements.detailStyle          = document.getElementById('detailStyle');
+  elements.detailStyleRow       = document.getElementById('detailStyleRow');
   elements.detailPrice          = document.getElementById('detailPrice');
   elements.detailStock          = document.getElementById('detailStock');
   elements.detailWishBtn        = document.getElementById('detailWishBtn');
@@ -256,6 +283,7 @@ function bindEvents() {
 
   // Pills (delegated)
   elements.brandPills.addEventListener('click', handleBrandPillClick);
+  elements.stylePills.addEventListener('click', handleStylePillClick);
 
   // Filter drawer
   elements.openFiltersBtn.addEventListener('click', openDrawer);
@@ -301,7 +329,7 @@ function bindEvents() {
   elements.saveDraftBtn.addEventListener('click', async () => {
     await addProduct({ asDraft: true });
   });
-  // Foto: comprimir + preview en cuanto se elige archivo
+  // Foto: comprimir + preview en cuanto se elige archivo (multi-select OK).
   elements.newImageFile.addEventListener('change', handlePhotoChange);
   elements.photoPreviewClear.addEventListener('click', (e) => {
     // El input file cubre la zona completa, asi que "Cambiar" no hace falta
@@ -311,6 +339,12 @@ function bindEvents() {
     e.stopPropagation();
     resetPhotoDrop();
   });
+  // Thumbs: delegacion para "quitar" y drag-reorder (Fase 3).
+  elements.photoThumbs.addEventListener('click', handlePhotoThumbClick);
+  elements.photoThumbs.addEventListener('dragstart', handlePhotoThumbDragStart);
+  elements.photoThumbs.addEventListener('dragover',  handlePhotoThumbDragOver);
+  elements.photoThumbs.addEventListener('drop',      handlePhotoThumbDrop);
+  elements.photoThumbs.addEventListener('dragend',   handlePhotoThumbDragEnd);
   elements.adminTableBody.addEventListener('change', handleAdminTableChange);
   elements.adminTableBody.addEventListener('click', handleAdminTableClick);
   elements.signOutButton.addEventListener('click', async () => { await signOut(); });
@@ -352,10 +386,25 @@ function bindEvents() {
   elements.detailWishBtn.addEventListener('click', handleDetailWishToggle);
   elements.detailShareBtn.addEventListener('click', handleDetailShare);
 
+  // Gallery nav (Fase 3): prev/next + dots + swipe touch.
+  // Los handlers no-op si el modal no tiene mas de 1 imagen
+  // (setDetailSlide valida bounds y la CSS oculta los botones).
+  elements.detailGalPrev.addEventListener('click', () => setDetailSlide(state.detailGallery.index - 1));
+  elements.detailGalNext.addEventListener('click', () => setDetailSlide(state.detailGallery.index + 1));
+  elements.detailGalDots.addEventListener('click', (e) => {
+    const dot = e.target.closest('.detail-gal-dot');
+    if (!dot) return;
+    const i = Number(dot.dataset.index);
+    if (!Number.isNaN(i)) setDetailSlide(i);
+  });
+  // Swipe mobile: threshold de 40px para decidir si es swipe real (no tap).
+  bindGallerySwipe(elements.detailMedia);
+
   // Back del navegador cierra el detalle si esta abierto.
   window.addEventListener('popstate', handlePopState);
 
-  // Escape cierra modales/drawers
+  // Escape cierra modales/drawers. Flechas navegan la galeria si el
+  // modal de detalle esta abierto (prioridad sobre cualquier otro modal).
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (!elements.detailModal.classList.contains('hidden')) {
@@ -366,6 +415,17 @@ function bindEvents() {
       closeNotifyModal();
       closeDrawer();
       closeWishlistDrawer();
+      return;
+    }
+    // Flechas: solo cuando el modal esta abierto.
+    const detailOpen = !elements.detailModal.classList.contains('hidden');
+    if (!detailOpen) return;
+    if (e.key === 'ArrowLeft') {
+      setDetailSlide(state.detailGallery.index - 1);
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight') {
+      setDetailSlide(state.detailGallery.index + 1);
+      e.preventDefault();
     }
   });
 }
@@ -759,6 +819,7 @@ function handleRealtimeChange({ event, product }) {
   }
   state.lastUpdated = new Date().toISOString();
   renderBrandPills();
+  renderStylePills();
   renderColorSwatches();
   renderAll();
 
@@ -847,6 +908,74 @@ function handleBrandPillClick(e) {
   renderBrandPills();
   renderCatalogAndStats();
   renderActiveFiltersBadge();
+  syncFiltersToURL();
+}
+
+// ---------- Style pills (Fase 3) ----------
+// Multi-select: click toggles membership en state.filters.styles (Set).
+// La pill "Limpiar" vacia el set. Render se auto-oculta si ningun producto
+// tiene un style asignado todavia (admin recien empieza a clasificar).
+function renderStylePills() {
+  // Contar cuantos productos tienen un style valido. Si es 0, escondemos
+  // la nav completa para no mostrar filtros vacios.
+  const used = new Set();
+  for (const p of state.products) {
+    if (isValidStyle(p.style)) used.add(p.style);
+  }
+  if (used.size === 0) {
+    elements.stylePills.classList.add('hidden');
+    elements.stylePills.innerHTML = '';
+    return;
+  }
+  elements.stylePills.classList.remove('hidden');
+
+  // Mostrar solo los estilos que tienen al menos 1 producto — no queremos
+  // ofrecer "Clutch" como filtro si no hay ningun clutch en catalogo.
+  // Orden: el orden canonico definido en STYLES (no alfabetico) para que
+  // la UI sea estable aun cuando cambia el stock.
+  const active = state.filters.styles;
+  const pills = STYLES
+    .filter((s) => used.has(s))
+    .map((s) => {
+      const isActive = active.has(s);
+      return `
+        <button class="pill ${isActive ? 'is-active' : ''}"
+                type="button"
+                data-style="${escapeAttribute(s)}"
+                aria-pressed="${isActive ? 'true' : 'false'}">
+          ${escapeHtml(STYLE_LABELS[s] || s)}
+        </button>
+      `;
+    })
+    .join('');
+
+  // Pill "limpiar": solo visible cuando hay >=1 estilo activo.
+  const clearBtn = active.size > 0
+    ? `<button class="pill is-clear" type="button" data-style="__clear__">Limpiar</button>`
+    : '';
+
+  elements.stylePills.innerHTML = pills + clearBtn;
+}
+
+function handleStylePillClick(e) {
+  const pill = e.target.closest('button.pill');
+  if (!pill) return;
+  const style = pill.dataset.style;
+  const active = state.filters.styles;
+
+  if (style === '__clear__') {
+    active.clear();
+  } else if (isValidStyle(style)) {
+    if (active.has(style)) active.delete(style);
+    else active.add(style);
+  } else {
+    return;
+  }
+
+  renderStylePills();
+  renderCatalogAndStats();
+  renderActiveFiltersBadge();
+  syncFiltersToURL();
 }
 
 function handleColorSwatchClick(e) {
@@ -1184,25 +1313,24 @@ function renderProductDetail(product) {
   const isOut = status.className === 'out';
   const liked = state.wishlistLocal.has(product.id);
 
-  // Detail modal: imagen grande, responsive. En mobile ocupa ~100vw, en
-  // desktop ~50vw del modal. Preferimos 1200w como src principal.
-  const detailImg = buildImageSources(product.imageUrl || FALLBACK_IMAGE, {
-    sizes: '(max-width: 900px) 100vw, 50vw'
-  });
-  elements.detailImage.src = detailImg.src;
-  if (detailImg.srcset) {
-    elements.detailImage.setAttribute('srcset', detailImg.srcset);
-    elements.detailImage.setAttribute('sizes', detailImg.sizes);
-  } else {
-    elements.detailImage.removeAttribute('srcset');
-    elements.detailImage.removeAttribute('sizes');
-  }
-  elements.detailImage.decoding = 'async';
-  elements.detailImage.onerror = () => {
-    elements.detailImage.removeAttribute('srcset');
-    elements.detailImage.src = FALLBACK_IMAGE;
-  };
-  elements.detailImage.alt = `Cartera ${product.name}`;
+  // Galeria Fase 3: product.images[] es la fuente. Si esta vacio (legacy),
+  // caemos al unico imageUrl. Dedupe por URL para evitar mostrar la misma
+  // foto dos veces cuando images[0] === imageUrl (caso comun pre-migracion).
+  const gallery = Array.isArray(product.images) && product.images.length > 0
+    ? [...new Set(product.images.filter(Boolean))]
+    : [product.imageUrl || FALLBACK_IMAGE];
+
+  state.detailGallery.images = gallery;
+  state.detailGallery.index = 0;
+  state.detailGallery.alt = `Cartera ${product.name}`;
+
+  // Data attr para que CSS oculte nav/dots cuando hay 1 sola foto.
+  elements.detailMedia.dataset.count = String(gallery.length);
+  elements.detailMedia.dataset.index = '0';
+
+  // Pintar dots + counter + primera slide.
+  renderDetailGalleryUI();
+  setDetailSlide(0, { instant: true });
 
   // Status inline: solo lo mostramos cuando aporta info (low/out/reserved).
   // Para 'available' el stock del spec row ya lo dice; esconderlo evita ruido.
@@ -1217,6 +1345,15 @@ function renderProductDetail(product) {
   elements.detailBrand.textContent = product.brand;
   elements.detailName.textContent = product.name;
   elements.detailColor.textContent = product.color || '—';
+
+  // Estilo (Fase 3): fila visible solo cuando el producto esta clasificado.
+  if (isValidStyle(product.style)) {
+    elements.detailStyle.textContent = STYLE_LABELS[product.style] || product.style;
+    elements.detailStyleRow.hidden = false;
+  } else {
+    elements.detailStyleRow.hidden = true;
+  }
+
   elements.detailPrice.textContent = formatCurrency(product.price);
   elements.detailPrice.classList.add('price');
   elements.detailStock.textContent = isOut ? 'Agotado' : `${product.stock} disponibles`;
@@ -1254,6 +1391,120 @@ function handleDetailWishToggle() {
   elements.detailWishLabel.textContent = liked ? 'Guardado en wishlist' : 'Guardar en wishlist';
   // Repintar las cards para que el corazon se actualice tambien.
   renderCatalogAndStats();
+}
+
+// ---------- Detail gallery (Fase 3) ----------
+// Renderiza dots + counter basados en el state.detailGallery actual.
+function renderDetailGalleryUI() {
+  const { images, index } = state.detailGallery;
+  const total = images.length;
+
+  // Counter "2 / 3" — accesible via aria-live en caso de cambios via teclado.
+  if (elements.detailGalCounter) {
+    elements.detailGalCounter.textContent = total > 1 ? `${index + 1} / ${total}` : '';
+  }
+
+  // Dots — uno por foto, el activo con .is-active (widening + full ink).
+  if (elements.detailGalDots) {
+    if (total <= 1) {
+      elements.detailGalDots.innerHTML = '';
+    } else {
+      elements.detailGalDots.innerHTML = images
+        .map((_, i) => `
+          <button type="button"
+                  class="detail-gal-dot ${i === index ? 'is-active' : ''}"
+                  data-index="${i}"
+                  role="tab"
+                  aria-selected="${i === index ? 'true' : 'false'}"
+                  aria-label="Foto ${i + 1} de ${total}"></button>
+        `).join('');
+    }
+  }
+}
+
+// Cambia el slide activo. Valida bounds; si el index esta fuera no hace nada.
+// opts.instant = true saltea el fade (para el open inicial del modal).
+function setDetailSlide(nextIndex, { instant = false } = {}) {
+  const { images } = state.detailGallery;
+  const total = images.length;
+  if (total === 0) return;
+  // Clamp: no wrap-around en galerias pequenas (2-3 fotos) — el usuario
+  // espera que la flecha se sienta "apagada" en el borde, no que salte.
+  // Si mas adelante queremos wrap, este es el lugar para cambiarlo.
+  const clamped = Math.max(0, Math.min(total - 1, nextIndex));
+  if (clamped === state.detailGallery.index && !instant) return;
+
+  state.detailGallery.index = clamped;
+  elements.detailMedia.dataset.index = String(clamped);
+
+  const nextUrl = images[clamped];
+  const img = elements.detailImage;
+
+  const swap = () => {
+    const sources = buildImageSources(nextUrl || FALLBACK_IMAGE, {
+      sizes: '(max-width: 900px) 100vw, 50vw'
+    });
+    img.src = sources.src;
+    if (sources.srcset) {
+      img.setAttribute('srcset', sources.srcset);
+      img.setAttribute('sizes', sources.sizes);
+    } else {
+      img.removeAttribute('srcset');
+      img.removeAttribute('sizes');
+    }
+    img.decoding = 'async';
+    img.onerror = () => {
+      img.removeAttribute('srcset');
+      img.src = FALLBACK_IMAGE;
+    };
+    img.alt = state.detailGallery.alt || '';
+  };
+
+  if (instant) {
+    swap();
+    img.classList.remove('is-loading');
+  } else {
+    // Fade out → swap → fade in. onload para esperar el decode real.
+    img.classList.add('is-loading');
+    img.addEventListener('load', () => img.classList.remove('is-loading'), { once: true });
+    // Si la imagen esta cacheada, onload puede no disparar en algunos
+    // navegadores — quitamos la clase tambien despues de un tick.
+    setTimeout(() => img.classList.remove('is-loading'), 260);
+    swap();
+  }
+
+  renderDetailGalleryUI();
+}
+
+// Swipe en mobile: touchstart captura punto inicial, touchend mide delta.
+// Threshold 40px para no gatillar accidentalmente al hacer scroll vertical.
+function bindGallerySwipe(container) {
+  if (!container || typeof window === 'undefined') return;
+  let startX = 0, startY = 0, active = false;
+  const THRESHOLD = 40;
+
+  container.addEventListener('touchstart', (e) => {
+    if (state.detailGallery.images.length <= 1) return;
+    const t = e.changedTouches?.[0];
+    if (!t) return;
+    startX = t.clientX;
+    startY = t.clientY;
+    active = true;
+  }, { passive: true });
+
+  container.addEventListener('touchend', (e) => {
+    if (!active) return;
+    active = false;
+    const t = e.changedTouches?.[0];
+    if (!t) return;
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    // Ignorar si el gesto fue mas vertical que horizontal (scroll, no swipe).
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (Math.abs(dx) < THRESHOLD) return;
+    if (dx < 0) setDetailSlide(state.detailGallery.index + 1);
+    else        setDetailSlide(state.detailGallery.index - 1);
+  }, { passive: true });
 }
 
 async function handleDetailShare() {
@@ -1638,6 +1889,7 @@ function renderActiveFiltersBadge() {
   if (f.minPrice !== '') n++;
   if (f.maxPrice !== '') n++;
   if (f.stock !== 'all') n++;
+  if (f.styles && f.styles.size > 0) n += f.styles.size;
   elements.activeFiltersBadge.textContent = String(n);
   elements.activeFiltersBadge.classList.toggle('hidden', n === 0);
 }
@@ -1646,6 +1898,7 @@ function renderActiveFiltersBadge() {
 function getFilteredProducts() {
   const minPrice = toNumberOrNull(state.filters.minPrice);
   const maxPrice = toNumberOrNull(state.filters.maxPrice);
+  const styles = state.filters.styles; // Set
 
   return [...state.products]
     .filter((item) => {
@@ -1653,6 +1906,13 @@ function getFilteredProducts() {
       if (state.filters.search && !fullText.includes(state.filters.search)) return false;
       if (state.filters.brand !== 'all' && item.brand !== state.filters.brand) return false;
       if (state.filters.color !== 'all' && item.color !== state.filters.color) return false;
+      // Style filter (Fase 3): si hay >=1 style activo, el producto debe
+      // tener un style valido que este en el Set. Productos sin style (null)
+      // no aparecen cuando hay filtro activo — forzando al admin a clasificar
+      // para que reaparezcan en busquedas especificas.
+      if (styles && styles.size > 0) {
+        if (!item.style || !styles.has(item.style)) return false;
+      }
       if (minPrice !== null && item.price < minPrice) return false;
       if (maxPrice !== null && item.price > maxPrice) return false;
 
@@ -1669,6 +1929,42 @@ function getFilteredProducts() {
     });
 }
 
+// ---------- URL sync de filtros (Fase 3) ----------
+// Mantiene ?brand= y ?style= en la URL actual para que:
+//   - el usuario pueda compartir el link de un filtrado especifico
+//   - el back del navegador recupere el estado anterior
+// Nota: ?id=<product> se maneja aparte (openProductDetail/openDetailFromURL),
+// asi que aqui solo tocamos brand/style y preservamos lo demas.
+function syncFiltersToURL() {
+  const url = new URL(window.location.href);
+  // brand
+  if (state.filters.brand && state.filters.brand !== 'all') {
+    url.searchParams.set('brand', state.filters.brand);
+  } else {
+    url.searchParams.delete('brand');
+  }
+  // style (csv)
+  if (state.filters.styles && state.filters.styles.size > 0) {
+    url.searchParams.set('style', [...state.filters.styles].join(','));
+  } else {
+    url.searchParams.delete('style');
+  }
+  window.history.replaceState(null, '', url.toString());
+}
+
+function readFiltersFromURL() {
+  const url = new URL(window.location.href);
+  const brand = url.searchParams.get('brand');
+  if (brand && state.products.some((p) => p.brand === brand)) {
+    state.filters.brand = brand;
+  }
+  const style = url.searchParams.get('style');
+  if (style) {
+    const wanted = style.split(',').map((s) => s.trim()).filter(isValidStyle);
+    state.filters.styles = new Set(wanted);
+  }
+}
+
 function syncFilterInputs() {
   elements.searchInput.value     = state.filters.search;
   elements.minPriceFilter.value  = state.filters.minPrice;
@@ -1679,23 +1975,26 @@ function syncFilterInputs() {
 function clearFilters() {
   state.filters = {
     search: '', brand: 'all', color: 'all',
-    minPrice: '', maxPrice: '', stock: 'all'
+    minPrice: '', maxPrice: '', stock: 'all',
+    styles: new Set()
   };
   elements.searchInput.value     = '';
   elements.minPriceFilter.value  = '';
   elements.maxPriceFilter.value  = '';
   elements.stockFilter.value     = 'all';
   renderBrandPills();
+  renderStylePills();
   renderColorSwatches();
   renderCatalogAndStats();
   renderActiveFiltersBadge();
+  syncFiltersToURL();
 }
 
 // ---------- Admin: create / update / delete ----------
-// Cache del archivo comprimido entre el change del input y el submit.
-// La propia File API reemplaza el .files cuando asignamos uno nuevo, pero
-// guardarlo aparte hace explicito el flujo de compresion.
-let pendingPhotoFile = null;
+// Galeria en construccion (Fase 3): items paralelos { file, previewUrl, origSize }.
+// El orden del array = orden en que se guarda en images[] (principal primero).
+// dragIndex: indice de la tarjeta que se esta arrastrando (null si nada).
+const pendingPhotos = { items: [], dragIndex: null };
 
 async function addProduct({ asDraft = false } = {}) {
   const formData = new FormData(elements.productForm);
@@ -1705,6 +2004,8 @@ async function addProduct({ asDraft = false } = {}) {
   const price    = sanitizePrice(formData.get('price'));
   const rawStock = sanitizeStock(formData.get('stock'));
   const imageUrl = sanitizeText(formData.get('imageUrl'));
+  const styleRaw = formData.get('style');
+  const style    = isValidStyle(styleRaw) ? styleRaw : null;
 
   if (!name || !brand || !color) {
     setProductFormMessage('Completa nombre, marca y color.', 'error');
@@ -1719,15 +2020,18 @@ async function addProduct({ asDraft = false } = {}) {
   if (activeBtn) activeBtn.textContent = 'Guardando...';
   setProductFormMessage('', null);
 
-  let resolvedUrl = imageUrl && isUrlLike(imageUrl) ? imageUrl : null;
-  let resolvedPath = null;
+  // Galeria: items[] (multi) tiene prioridad. Si no hay, caemos al campo URL.
+  let gallery = [];
+  let paths   = [];
 
   try {
-    const file = pendingPhotoFile || elements.newImageFile.files?.[0] || null;
-    if (file) {
-      const uploaded = await uploadImage(file);
-      resolvedUrl  = uploaded.publicUrl;
-      resolvedPath = uploaded.path;
+    if (pendingPhotos.items.length > 0) {
+      const uploaded = await uploadImages(pendingPhotos.items.map((it) => it.file));
+      gallery = uploaded.publicUrls;
+      paths   = uploaded.paths;
+    } else if (imageUrl && isUrlLike(imageUrl)) {
+      gallery = [imageUrl];
+      paths   = []; // URL externa: no hay path en el bucket
     }
   } catch (error) {
     setProductFormMessage(`No se pudo subir la imagen: ${error?.message ?? 'error'}.`, 'error');
@@ -1746,8 +2050,13 @@ async function addProduct({ asDraft = false } = {}) {
       name, brand, color, price, stock,
       available,
       status: available ? 'available' : 'sold_out',
-      homeImageUrl: resolvedUrl || null,
-      imagePath: resolvedPath
+      style,
+      // Galeria nueva (Fase 3).
+      images:      gallery,
+      imagePaths:  paths,
+      // Legacy: primera foto como "casera" para compat con lectores viejos.
+      homeImageUrl: gallery[0] || null,
+      imagePath:    paths[0] || null
     });
     elements.productForm.reset();
     resetPhotoDrop();
@@ -1772,49 +2081,143 @@ function setProductFormMessage(text, kind) {
   elements.productFormMessage.textContent = text;
 }
 
-// --- Foto: eleccion + compresion + preview -----------------
+// --- Fotos: eleccion + compresion + preview (multi Fase 3) -----
+// Admite varios archivos a la vez. Cada uno se comprime en paralelo y se
+// agrega al final de pendingPhotos.items (sin reemplazar lo que ya habia).
 async function handlePhotoChange(event) {
-  const file = event.target.files?.[0];
-  if (!file) {
-    resetPhotoDrop();
-    return;
-  }
-  elements.photoDrop.classList.add('is-loading');
+  const files = Array.from(event.target.files ?? []);
+  if (files.length === 0) return;
+
+  elements.photoDrop?.classList.add('is-loading');
   try {
-    const processed = await compressImage(file, { maxSide: 1600, quality: 0.82, maxBytes: 420_000 });
-    pendingPhotoFile = processed;
-    showPhotoPreview(processed, file);
-  } catch (err) {
-    console.warn('No se pudo comprimir la imagen, se usa original:', err);
-    pendingPhotoFile = file;
-    showPhotoPreview(file, file);
+    const processed = await Promise.all(
+      files.map(async (f) => {
+        try {
+          const out = await compressImage(f, { maxSide: 1600, quality: 0.82, maxBytes: 420_000 });
+          return { file: out, origSize: f.size };
+        } catch (err) {
+          console.warn('No se pudo comprimir, se usa original:', err);
+          return { file: f, origSize: f.size };
+        }
+      })
+    );
+    for (const p of processed) {
+      const previewUrl = URL.createObjectURL(p.file);
+      pendingPhotos.items.push({ file: p.file, previewUrl, origSize: p.origSize });
+    }
+    // Limpiamos el input para que el mismo archivo pueda elegirse de nuevo.
+    if (elements.newImageFile) elements.newImageFile.value = '';
+    renderPhotoPreviewArea();
   } finally {
-    elements.photoDrop.classList.remove('is-loading');
+    elements.photoDrop?.classList.remove('is-loading');
   }
 }
 
-function showPhotoPreview(fileToPreview, originalFile) {
-  const url = URL.createObjectURL(fileToPreview);
-  elements.photoPreview.src = url;
-  elements.photoPreview.onload = () => URL.revokeObjectURL(url);
+// Despacha entre preview single (1 foto) y grid thumbs (>=2 fotos).
+// 0 fotos: vuelve al estado vacio.
+function renderPhotoPreviewArea() {
+  const n = pendingPhotos.items.length;
+  if (n === 0) {
+    elements.photoDropEmpty?.classList.remove('hidden');
+    elements.photoDropPreview?.classList.add('hidden');
+    elements.photoThumbs?.classList.add('hidden');
+    return;
+  }
+  if (n === 1) {
+    // Preview clasico con info de tamano.
+    const only = pendingPhotos.items[0];
+    elements.photoPreview.src = only.previewUrl;
+    const sizeKb = Math.round(only.file.size / 1024);
+    const origKb = Math.round(only.origSize / 1024);
+    const changed = only.file.size < only.origSize;
+    elements.photoPreviewInfo.textContent = changed
+      ? `${sizeKb} KB · optimizada (era ${origKb} KB)`
+      : `${sizeKb} KB`;
+    elements.photoDropEmpty?.classList.add('hidden');
+    elements.photoDropPreview?.classList.remove('hidden');
+    elements.photoThumbs?.classList.add('hidden');
+    return;
+  }
+  // Galeria: grid de thumbs con reorder/delete.
+  elements.photoDropEmpty?.classList.add('hidden');
+  elements.photoDropPreview?.classList.add('hidden');
+  elements.photoThumbs?.classList.remove('hidden');
+  renderPhotoThumbs();
+}
 
-  const sizeKb = Math.round(fileToPreview.size / 1024);
-  const origKb = Math.round(originalFile.size / 1024);
-  const changed = fileToPreview !== originalFile && sizeKb < origKb;
-  elements.photoPreviewInfo.textContent = changed
-    ? `${sizeKb} KB · optimizada (era ${origKb} KB)`
-    : `${sizeKb} KB`;
+function renderPhotoThumbs() {
+  const host = elements.photoThumbs;
+  if (!host) return;
+  const items = pendingPhotos.items;
+  host.innerHTML = items.map((it, i) => `
+    <div class="photo-thumb${i === 0 ? ' is-primary' : ''}" data-index="${i}" draggable="true">
+      <img src="${it.previewUrl}" alt="Foto ${i + 1}" />
+      ${i === 0 ? '<span class="photo-thumb-chip">Principal</span>' : ''}
+      <button type="button" class="photo-thumb-remove" data-action="remove" data-index="${i}" aria-label="Quitar foto ${i + 1}">&times;</button>
+    </div>
+  `).join('');
+}
 
-  elements.photoDropEmpty.classList.add('hidden');
-  elements.photoDropPreview.classList.remove('hidden');
+function handlePhotoThumbClick(e) {
+  const btn = e.target.closest('[data-action="remove"]');
+  if (!btn) return;
+  const idx = Number(btn.dataset.index);
+  const removed = pendingPhotos.items.splice(idx, 1)[0];
+  if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+  renderPhotoPreviewArea();
+}
+
+function handlePhotoThumbDragStart(e) {
+  const card = e.target.closest('.photo-thumb');
+  if (!card) return;
+  pendingPhotos.dragIndex = Number(card.dataset.index);
+  card.classList.add('is-dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  // Firefox requiere setData para disparar drag.
+  try { e.dataTransfer.setData('text/plain', String(pendingPhotos.dragIndex)); } catch {}
+}
+
+function handlePhotoThumbDragOver(e) {
+  e.preventDefault();
+  const card = e.target.closest('.photo-thumb');
+  elements.photoThumbs?.querySelectorAll('.is-drop-target').forEach((n) => n.classList.remove('is-drop-target'));
+  if (card) card.classList.add('is-drop-target');
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function handlePhotoThumbDrop(e) {
+  e.preventDefault();
+  const card = e.target.closest('.photo-thumb');
+  const from = pendingPhotos.dragIndex;
+  if (!card || from == null) { handlePhotoThumbDragEnd(); return; }
+  const to = Number(card.dataset.index);
+  if (from !== to) {
+    const [moved] = pendingPhotos.items.splice(from, 1);
+    pendingPhotos.items.splice(to, 0, moved);
+  }
+  handlePhotoThumbDragEnd();
+  renderPhotoThumbs();
+}
+
+function handlePhotoThumbDragEnd() {
+  pendingPhotos.dragIndex = null;
+  elements.photoThumbs?.querySelectorAll('.is-dragging, .is-drop-target')
+    .forEach((n) => n.classList.remove('is-dragging', 'is-drop-target'));
 }
 
 function resetPhotoDrop() {
-  pendingPhotoFile = null;
+  // Libera memoria de los previews antes de vaciar el array.
+  for (const it of pendingPhotos.items) {
+    if (it.previewUrl) URL.revokeObjectURL(it.previewUrl);
+  }
+  pendingPhotos.items = [];
+  pendingPhotos.dragIndex = null;
   if (elements.newImageFile) elements.newImageFile.value = '';
   if (elements.photoPreview) elements.photoPreview.src = '';
   elements.photoDropEmpty?.classList.remove('hidden');
   elements.photoDropPreview?.classList.add('hidden');
+  elements.photoThumbs?.classList.add('hidden');
+  if (elements.photoThumbs) elements.photoThumbs.innerHTML = '';
 }
 
 // Compresion client-side: reduce piedras (~3MB) a <~400KB sin perder

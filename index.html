@@ -209,6 +209,14 @@
   <!-- 3. BRAND PILLS ------------------------------------------- -->
   <nav id="brandPills" class="brand-pills" aria-label="Filtrar por marca"></nav>
 
+  <!-- 3b. STYLE PILLS (Fase 3) ---------------------------------
+       Multi-select: el usuario puede activar varios estilos a la vez.
+       Se esconde solo hasta que haya al menos 1 producto clasificado
+       con style; mientras tanto sigue invisible para no mostrar un
+       filtro vacio. JS (renderStylePills) se encarga de la visibilidad.
+  -->
+  <nav id="stylePills" class="style-pills hidden" aria-label="Filtrar por estilo"></nav>
+
   <!-- 4. FILTER TOOLBAR ---------------------------------------- -->
   <div class="toolbar">
     <p class="browsing">
@@ -314,25 +322,35 @@
           <p class="muted">Toma la foto del grupo de WhatsApp y completa los datos. Tarda menos de un minuto.</p>
         </header>
 
-        <!-- Zona de foto: drop / file picker con preview -->
+        <!-- Zona de foto: multi-upload (Fase 3). Admin puede elegir varias
+             fotos de una pieza (2-3 ideal). La primera se usa como principal
+             en la tarjeta del catalogo; el resto aparecen en la galeria del
+             modal de detalle. Drag to reorder en la grid de thumbs de abajo. -->
         <label id="photoDrop" class="photo-drop" for="newImageFile">
-          <input id="newImageFile" name="imageFile" type="file" accept="image/*" />
+          <input id="newImageFile" name="imageFile" type="file" accept="image/*" multiple />
           <div id="photoDropEmpty" class="photo-drop-empty">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 7h3l2-2h6l2 2h3v12H4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
               <circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
             </svg>
-            <strong>Toca para elegir la foto</strong>
-            <span>desde galeria o tomar una nueva</span>
+            <strong>Toca para elegir fotos</strong>
+            <span>puedes elegir varias — la primera es la principal</span>
           </div>
           <div id="photoDropPreview" class="photo-drop-preview hidden">
+            <!-- Legacy preview (compat con codigo anterior — cuando solo hay
+                 1 foto, se llenan estos campos). La grid nueva de thumbs
+                 aparece abajo cuando hay >1. -->
             <img id="photoPreview" alt="Vista previa" />
             <div class="photo-drop-meta">
               <span id="photoPreviewInfo">—</span>
-              <button type="button" id="photoPreviewClear" class="link-button" aria-label="Quitar foto">Quitar</button>
+              <button type="button" id="photoPreviewClear" class="link-button" aria-label="Quitar fotos">Quitar</button>
             </div>
           </div>
         </label>
+        <!-- Grid de miniaturas cuando hay >=2 fotos. Cada thumb tiene un
+             boton "X" para removerla; la primera tiene un chip "Principal".
+             Reordering se hace con drag native HTML5 (draggable=true). -->
+        <div id="photoThumbs" class="photo-thumbs hidden" aria-label="Fotos de la pieza"></div>
 
         <div class="form-grid">
           <div class="field full">
@@ -356,6 +374,20 @@
           <div class="field">
             <label for="newStock">Unidades</label>
             <input id="newStock" name="stock" type="number" min="0" step="1" inputmode="numeric" value="1" required />
+          </div>
+          <div class="field">
+            <label for="newStyle">Estilo</label>
+            <select id="newStyle" name="style">
+              <option value="">— sin clasificar —</option>
+              <option value="crossbody">Crossbody</option>
+              <option value="tote">Tote</option>
+              <option value="satchel">Satchel</option>
+              <option value="clutch">Clutch</option>
+              <option value="bucket">Bucket</option>
+              <option value="hobo">Hobo</option>
+              <option value="shoulder">Shoulder</option>
+              <option value="mini">Mini</option>
+            </select>
           </div>
         </div>
 
@@ -494,8 +526,34 @@
     </button>
 
     <div class="detail-stage">
-      <figure class="detail-media">
-        <img id="detailImage" src="" alt="" />
+      <figure class="detail-media" id="detailMedia" data-count="1" data-index="0">
+        <div class="detail-gallery">
+          <!-- Slide activo. JS swapea el src cuando el usuario navega.
+               En galerias de 1 foto, los controles quedan ocultos via CSS
+               (data-count="1"), asi que la experiencia es identica a la
+               pre-Fase 3 sin agregar ruido visual. -->
+          <img id="detailImage" class="detail-slide" src="" alt="" />
+        </div>
+
+        <!-- Arrows: en desktop flotan sobre la imagen; en mobile aparecen
+             abajo para no tapar el producto. Click + teclado funcionan
+             en ambos. El swipe mobile esta en app.js (touchstart/end).
+             Los buttons siempre estan en el DOM pero se muestran solo
+             cuando hay mas de 1 imagen (ver selector [data-count="1"]). -->
+        <button id="detailGalPrev" class="detail-gal-nav detail-gal-prev" type="button" aria-label="Foto anterior">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18L9 12l6-6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="detailGalNext" class="detail-gal-nav detail-gal-next" type="button" aria-label="Foto siguiente">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
+        <!-- Counter + dots. Counter es para screen readers y legibilidad
+             rapida ("2 / 3"); dots son indicadores visuales. Ambos se
+             generan desde JS cuando hay >1 foto. -->
+        <div class="detail-gal-meta" aria-hidden="true">
+          <span id="detailGalCounter" class="detail-gal-counter"></span>
+          <div id="detailGalDots" class="detail-gal-dots" role="tablist" aria-label="Fotos"></div>
+        </div>
       </figure>
 
       <aside class="detail-info">
@@ -507,6 +565,7 @@
 
         <dl class="detail-specs">
           <div class="spec"><dt>Color</dt><dd id="detailColor"></dd></div>
+          <div class="spec" id="detailStyleRow" hidden><dt>Estilo</dt><dd id="detailStyle"></dd></div>
           <div class="spec"><dt>Precio</dt><dd id="detailPrice"></dd></div>
           <div class="spec"><dt>Stock</dt><dd id="detailStock"></dd></div>
         </dl>

@@ -841,6 +841,67 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ===========================================================
+   3b. STYLE PILLS (Fase 3) — multi-select
+   Mismos .pill tipograficos que brand-pills, pero con comportamiento
+   multi-select: el click activa/desactiva cada pill independientemente.
+   Diferenciamos visualmente la activa con un box de fondo sutil (en
+   vez del underline de brand-pills) para que sea evidente que se
+   pueden seleccionar varios a la vez.
+   Contenedor sin border-bottom para no apilar dos lineas en el header.
+   =========================================================== */
+.style-pills {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 10px 24px 14px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+}
+.style-pills.hidden { display: none; }
+.style-pills .pill {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.style-pills .pill::after { display: none; }   /* sin underline para multi */
+.style-pills .pill:hover  { color: var(--ink); border-color: var(--ink-soft); }
+.style-pills .pill.is-active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+.style-pills .pill.is-clear {
+  /* Pill "Limpiar estilos" (solo aparece cuando hay >=1 activo). */
+  border-style: dashed;
+  color: var(--ink-mute);
+}
+.style-pills .pill.is-clear:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: transparent;
+}
+@media (max-width: 720px) {
+  .style-pills {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 16px 12px;
+    gap: 8px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(90deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%);
+  }
+  .style-pills::-webkit-scrollbar { display: none; }
+  .style-pills .pill { flex: 0 0 auto; font-size: 0.66rem; }
+}
+
+/* ===========================================================
    4. FILTER TOOLBAR — hairline, tipografica
    Ya no es un panel con boton-capsula. Es una linea discreta
    entre las pills y el grid que apenas se anuncia.
@@ -919,6 +980,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 64px 28px;
+  /* align-items:start → tarjetas con alturas variables (por imagenes de
+     aspect distinto) se alinean al top del row en vez de estirarse.
+     Las filas del grid toman la altura de la tarjeta mas alta por
+     default; el texto queda al pie de cada tarjeta (margin-top:auto en
+     product-price-row mas abajo lo empuja). */
+  align-items: start;
 }
 @media (max-width: 1100px) { .catalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 52px 22px; } }
 @media (max-width: 780px)  { .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 14px; } }
@@ -947,28 +1014,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .product-image-wrap {
   position: relative;
-  /* aspect-ratio 3/4 (portrait estandar de fotografia de producto): las
-     fotos del catalogo son portrait (bag vertical + props), asi que un
-     wrap 3/4 las deja llenar casi edge-to-edge incluso con object-fit:
-     contain. Si una foto es mas portrait que 3/4 queda un letterbox
-     horizontal minimo; si es menos portrait, queda vertical minimo.
-     Previo 4/5 hacia los portraits ver "achatados" con letterbox lateral. */
-  aspect-ratio: 3 / 4;
   overflow: hidden;
   background: var(--bg-surface);
-  /* sin border-radius ni shadow: foto plena, sin marco que compita */
+  /* Sin aspect-ratio forzado: cada foto se muestra a su relacion real.
+     Antes habia aspect-ratio 3/4 + object-fit:contain, lo que producia
+     letterbox gris alrededor de fotos con otro aspect (algunas salian
+     cuadradas, otras mas portrait). Usuario pidio ver las fotos
+     "completas" al "size default" sin corte — esto lo logra: la
+     tarjeta adapta su altura al alto natural de la imagen.
+     CLS: el <img> mantiene width="600" height="800" como hint, asi
+     que el navegador reserva espacio 3:4 hasta cargar la foto real.
+     sin border-radius ni shadow: foto plena, sin marco que compita */
 }
 .product-image {
-  width: 100%; height: 100%;
-  /* contain (no cover): mostrar la pieza COMPLETA sin recortar. Combinado
-     con aspect-ratio 3/4 arriba, fotos portrait estandar llenan el
-     frame edge-to-edge. Padding 0 (antes tenia 10-18px) — el padding
-     creaba letterbox gris alrededor y hacia que las fotos se vieran mas
-     chicas/encojidas. Con el fondo --bg-surface detras, si llega a haber
-     letterbox por mismatch de aspect ratio se lee como "marco" editorial
-     sin robar area a la foto. */
-  object-fit: contain;
-  box-sizing: border-box;
+  width: 100%;
+  height: auto;   /* altura natural de la foto → sin letterbox */
+  display: block;
   transition: transform 0.6s cubic-bezier(0.22, 0.9, 0.3, 1);
 }
 .product-card:hover .product-image { transform: scale(1.035); }
@@ -1559,12 +1620,117 @@ button, input, select, textarea { font: inherit; color: inherit; }
   min-height: 60vh;
   padding: 72px 24px 24px;
 }
-.detail-media img {
+/* Contenedor del slide (el <img>) — permite posicionar controles encima
+   y aplicar fade cuando cambia el src via JS. */
+.detail-gallery {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
+.detail-slide {
   max-width: 100%;
   max-height: 60vh;
   width: auto; height: auto;
   object-fit: contain;
   display: block;
+  /* Fade corto cuando JS swapea src: opacidad baja → subimos a 1 en load.
+     Timing rapido (220ms) para que no se sienta laggy al navegar. */
+  transition: opacity 0.22s ease;
+}
+.detail-slide.is-loading { opacity: 0; }
+
+/* Navegacion (prev/next). Solo visible cuando hay >1 foto.
+   En desktop flotan sobre los bordes de la imagen; en mobile quedan
+   en esquinas inferiores para no competir con la pieza. */
+.detail-gal-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  z-index: 3;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.detail-gal-nav svg { width: 20px; height: 20px; }
+.detail-gal-nav:hover { background: #fff; transform: translateY(-50%) scale(1.04); }
+.detail-gal-nav:active { transform: translateY(-50%) scale(0.96); }
+.detail-gal-nav:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.detail-gal-prev { left: 18px; }
+.detail-gal-next { right: 18px; }
+
+/* Meta (counter + dots) debajo de la imagen. */
+.detail-gal-meta {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
+  z-index: 2;
+}
+.detail-gal-counter {
+  font-family: "Jost", sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.detail-gal-dots {
+  display: inline-flex;
+  gap: 7px;
+}
+.detail-gal-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  transition: background 0.2s ease, width 0.22s ease;
+}
+.detail-gal-dot.is-active {
+  background: var(--ink);
+  width: 18px;
+  border-radius: 3px;
+}
+.detail-gal-dot:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* Ocultar nav + meta cuando solo hay 1 imagen (sin Fase 3 o galeria 1/1). */
+.detail-media[data-count="1"] .detail-gal-nav,
+.detail-media[data-count="0"] .detail-gal-nav,
+.detail-media[data-count="1"] .detail-gal-meta,
+.detail-media[data-count="0"] .detail-gal-meta {
+  display: none;
+}
+
+/* Reduce-motion: mata los fades del slide. */
+@media (prefers-reduced-motion: reduce) {
+  .detail-slide { transition: none; }
+  .detail-gal-dot { transition: none; }
 }
 
 .detail-info {
@@ -1894,6 +2060,89 @@ body.detail-open { overflow: hidden; }
   z-index: 2;
   font-size: 0.7rem;
   letter-spacing: 0.18em;
+}
+
+/* Galeria admin (Fase 3): grid de thumbs con reorder por drag + delete.
+   Aparece cuando hay 2+ fotos; la primera lleva chip "Principal". */
+.photo-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  background: var(--bg-surface);
+}
+.photo-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  cursor: grab;
+  transition: border-color 150ms ease, transform 120ms ease, box-shadow 150ms ease;
+}
+.photo-thumb:hover { border-color: var(--ink-soft); }
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none; /* el drag lo maneja el contenedor */
+}
+.photo-thumb.is-primary {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+.photo-thumb.is-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+.photo-thumb.is-drop-target {
+  border-color: var(--ink);
+  transform: scale(1.03);
+}
+.photo-thumb-chip {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background: var(--ink);
+  color: var(--bg);
+  font-family: "Jost", sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 3px 6px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+.photo-thumb-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  transition: background 140ms ease, transform 140ms ease;
+}
+.photo-thumb-remove:hover {
+  background: var(--ink);
+  transform: scale(1.08);
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-thumb,
+  .photo-thumb-remove { transition: none; }
+  .photo-thumb.is-drop-target { transform: none; }
 }
 
 /* Seccion avanzada colapsable */

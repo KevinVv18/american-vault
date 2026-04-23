@@ -18,9 +18,24 @@ create table if not exists public.products (
   available     boolean not null default true,
   status        text not null default 'available'
                   check (status in ('available','reserved','sold_out')),
+  -- Galeria multi-imagen (Fase 3). images[0] = principal mostrada en catalogo;
+  -- images[1..] = secundarias en el modal de detalle. image_paths[] es la
+  -- misma cardinalidad pero con rutas dentro del bucket (para cleanup).
+  images        text[] not null default '{}'::text[],
+  image_paths   text[] not null default '{}'::text[],
+  -- Legacy (Fase 1-A): se mantienen para compat. La app lee
+  -- images[0] || stock_image_url || image_url (en ese orden).
   image_url         text,             -- foto "casera" (bucket 'carteras')
   image_path        text,             -- ruta dentro del bucket 'carteras'
   stock_image_url   text,             -- foto editorial/stock (principal). Fallback: image_url
+  -- Estilo para filtro publico (Fase 3). Null = sin clasificar.
+  style         text check (
+    style is null
+    or style in (
+      'crossbody', 'tote', 'satchel', 'clutch',
+      'bucket',    'hobo', 'shoulder', 'mini'
+    )
+  ),
   source_file   text unique,          -- nombre original (evita duplicados en seed)
   notes         text,
   created_at    timestamptz not null default now(),
@@ -31,6 +46,7 @@ create index if not exists products_brand_idx     on public.products (brand);
 create index if not exists products_available_idx on public.products (available);
 create index if not exists products_created_idx   on public.products (created_at desc);
 create index if not exists products_status_idx    on public.products (status);
+create index if not exists products_style_idx     on public.products (style) where style is not null;
 
 -- ---------- Tabla: wishlist ----------
 create table if not exists public.wishlist (
