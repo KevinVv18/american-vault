@@ -1013,28 +1013,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .product-image-wrap {
   position: relative;
+  /* overflow:hidden solo recorta el scale(1.035) del hover, nunca la
+     imagen base (la imagen ocupa 100% del wrap, sin excederlo). */
   overflow: hidden;
-  /* Fondo = page bg (blanco puro) para que cualquier espacio sobrante
-     al hacer contain quede invisible. No usamos --bg-surface porque
-     produciria rectangulos grises notorios que leen como letterbox. */
   background: var(--bg);
-  /* Aspect-ratio uniforme: TODAS las tarjetas identicas → simetria
-     editorial. 4:5 (Instagram portrait) es el mejor compromiso entre
-     fotos cuadradas (stock "Remate del dia") y portrait (carteras
-     paradas). CLS: el <img> ya tiene width/height para reservar espacio
-     similar durante la carga. */
-  aspect-ratio: 4 / 5;
+  /* SIN aspect-ratio forzado: cada foto se muestra a su tamano real.
+     Prioridad del usuario: ver cada milimetro de la cartera — cualquier
+     frame uniforme producira recorte o letterbox, asi que elegimos
+     aspect natural. La simetria del catalogo la da el ancho uniforme
+     del grid (todas las columnas miden lo mismo) + alineamiento al
+     tope de la fila via align-items: start en .catalog-grid. */
 }
 .product-image {
   width: 100%;
-  height: 100%;
-  /* contain: nunca recorta — se ve el 100% de la foto siempre.
-     Cualquier hueco se pinta con el bg blanco del wrap y es invisible
-     sobre la pagina. object-position: center mantiene la foto centrada
-     en el frame (no se va al tope o al costado), garantizando simetria
-     fila-a-fila. */
-  object-fit: contain;
-  object-position: center;
+  /* height:auto → la tarjeta toma la altura natural de la foto.
+     Ninguna imagen se recorta jamas. Ancho 100% del columna del grid,
+     alto proporcional. */
+  height: auto;
   display: block;
   transition: transform 0.6s cubic-bezier(0.22, 0.9, 0.3, 1);
 }
