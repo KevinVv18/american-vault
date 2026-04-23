@@ -980,11 +980,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 64px 28px;
-  /* align-items:start → tarjetas con alturas variables (por imagenes de
-     aspect distinto) se alinean al top del row en vez de estirarse.
-     Las filas del grid toman la altura de la tarjeta mas alta por
-     default; el texto queda al pie de cada tarjeta (margin-top:auto en
-     product-price-row mas abajo lo empuja). */
+  /* align-items:start para que si por cualquier razon hay tarjetas
+     con alturas distintas (ej. titulo en 2 lineas vs 1) queden
+     alineadas por arriba y no estiradas. Con aspect-ratio uniforme
+     en las fotos, la fuente principal de variacion son los titulos. */
   align-items: start;
 }
 @media (max-width: 1100px) { .catalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 52px 22px; } }
@@ -1015,20 +1014,27 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .product-image-wrap {
   position: relative;
   overflow: hidden;
-  background: var(--bg-surface);
-  /* Sin aspect-ratio forzado: cada foto se muestra a su relacion real.
-     Antes habia aspect-ratio 3/4 + object-fit:contain, lo que producia
-     letterbox gris alrededor de fotos con otro aspect (algunas salian
-     cuadradas, otras mas portrait). Usuario pidio ver las fotos
-     "completas" al "size default" sin corte — esto lo logra: la
-     tarjeta adapta su altura al alto natural de la imagen.
-     CLS: el <img> mantiene width="600" height="800" como hint, asi
-     que el navegador reserva espacio 3:4 hasta cargar la foto real.
-     sin border-radius ni shadow: foto plena, sin marco que compita */
+  /* Fondo = page bg (blanco puro) para que cualquier espacio sobrante
+     al hacer contain quede invisible. No usamos --bg-surface porque
+     produciria rectangulos grises notorios que leen como letterbox. */
+  background: var(--bg);
+  /* Aspect-ratio uniforme: TODAS las tarjetas identicas → simetria
+     editorial. 4:5 (Instagram portrait) es el mejor compromiso entre
+     fotos cuadradas (stock "Remate del dia") y portrait (carteras
+     paradas). CLS: el <img> ya tiene width/height para reservar espacio
+     similar durante la carga. */
+  aspect-ratio: 4 / 5;
 }
 .product-image {
   width: 100%;
-  height: auto;   /* altura natural de la foto → sin letterbox */
+  height: 100%;
+  /* contain: nunca recorta — se ve el 100% de la foto siempre.
+     Cualquier hueco se pinta con el bg blanco del wrap y es invisible
+     sobre la pagina. object-position: center mantiene la foto centrada
+     en el frame (no se va al tope o al costado), garantizando simetria
+     fila-a-fila. */
+  object-fit: contain;
+  object-position: center;
   display: block;
   transition: transform 0.6s cubic-bezier(0.22, 0.9, 0.3, 1);
 }
