@@ -1013,23 +1013,28 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .product-image-wrap {
   position: relative;
-  /* overflow:hidden solo recorta el scale(1.035) del hover, nunca la
-     imagen base (la imagen ocupa 100% del wrap, sin excederlo). */
   overflow: hidden;
+  /* Fondo blanco puro = mismo color que la pagina. Asi el "espacio
+     sobrante" del contain (cuando la foto no llena exactamente el
+     frame 4:5) queda INVISIBLE — se funde con la pagina y lee como
+     margen editorial, no como letterbox gris. */
   background: var(--bg);
-  /* SIN aspect-ratio forzado: cada foto se muestra a su tamano real.
-     Prioridad del usuario: ver cada milimetro de la cartera — cualquier
-     frame uniforme producira recorte o letterbox, asi que elegimos
-     aspect natural. La simetria del catalogo la da el ancho uniforme
-     del grid (todas las columnas miden lo mismo) + alineamiento al
-     tope de la fila via align-items: start en .catalog-grid. */
+  /* Aspect-ratio uniforme 4:5 (Instagram shop standard).
+     → Simetria de fila: TODAS las cards identicas sin cambiar el
+       ancho de columna del grid (la pagina no se afecta).
+     → Fotos portrait tall (ej. Steve Madden) casi llenan el frame.
+     → Fotos landscape (ej. stock con banner) muestran el 100%
+       centradas, con respiracion blanca arriba/abajo invisible. */
+  aspect-ratio: 4 / 5;
 }
 .product-image {
   width: 100%;
-  /* height:auto → la tarjeta toma la altura natural de la foto.
-     Ninguna imagen se recorta jamas. Ancho 100% del columna del grid,
-     alto proporcional. */
-  height: auto;
+  height: 100%;
+  /* contain = la foto NUNCA se recorta. Si su aspect no coincide con
+     4:5, se muestra completa con espacio blanco alrededor. Ese espacio,
+     sobre fondo blanco de pagina, es invisible. */
+  object-fit: contain;
+  object-position: center;
   display: block;
   transition: transform 0.6s cubic-bezier(0.22, 0.9, 0.3, 1);
 }
