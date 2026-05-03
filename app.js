@@ -174,6 +174,12 @@ function cacheElements() {
   elements.catalogGrid          = document.getElementById('catalogGrid');
   elements.lastUpdated          = document.getElementById('lastUpdated');
 
+  // Bestsellers + origin + footer (Fase 4)
+  elements.bestsellers          = document.getElementById('bestsellers');
+  elements.bestsellersGrid      = document.getElementById('bestsellersGrid');
+  elements.originCTA            = document.getElementById('originCTA');
+  elements.footerWhatsapp       = document.getElementById('footerWhatsapp');
+
   // Filter drawer
   elements.drawer               = document.getElementById('filterDrawer');
   elements.drawerScrim          = document.getElementById('drawerScrim');
@@ -321,6 +327,28 @@ function bindEvents() {
   // Catalog grid delegation (hearts + notify-me)
   elements.catalogGrid.addEventListener('click', handleGridClick);
 
+  // Bestsellers section: click en card abre el modal de detalle del
+  // producto correspondiente. CTA "Ver todo el catalogo" hace scroll
+  // suave al grid principal.
+  if (elements.bestsellersGrid) {
+    elements.bestsellersGrid.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-bestseller-id]');
+      if (!card) return;
+      const id = card.dataset.bestsellerId;
+      const p = state.products.find((x) => x.id === id);
+      if (p) openDetail(p);
+    });
+  }
+  if (elements.bestsellers) {
+    const cta = elements.bestsellers.querySelector('[data-action="scroll-catalog"]');
+    if (cta) {
+      cta.addEventListener('click', (e) => {
+        e.preventDefault();
+        elements.catalogGrid?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }
+
   // Admin
   elements.productForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -433,6 +461,17 @@ function bindEvents() {
 function setTopWhatsapp() {
   const msg = encodeURIComponent('Hola, vengo del catalogo de American Vault.');
   elements.topWhatsapp.href = `${WHATSAPP_URL}?text=${msg}`;
+
+  // Origin section CTA y footer link comparten el mismo destino con
+  // mensajes pre-cargados ligeramente distintos para diferenciar el
+  // contexto en el que llega el cliente.
+  if (elements.originCTA) {
+    const originMsg = encodeURIComponent('Hola, leyendo sobre American Vault. Quisiera preguntar...');
+    elements.originCTA.href = `${WHATSAPP_URL}?text=${originMsg}`;
+  }
+  if (elements.footerWhatsapp) {
+    elements.footerWhatsapp.href = `${WHATSAPP_URL}?text=${msg}`;
+  }
 }
 
 // ---------- Session / Auth ----------
@@ -845,6 +884,7 @@ function renderAll() {
   renderLockState();
   renderAdminNotice();
   renderCatalogAndStats();
+  renderBestsellers();
   renderAdminPanel();
   renderLastUpdated();
   renderActiveFiltersBadge();
@@ -1038,6 +1078,63 @@ function renderCatalogAndStats() {
   // Pasamos el indice al cardHTML: los primeros ~6 items son LCP candidates
   // en desktop (arriba del fold), asi que reciben fetchpriority=high + eager.
   elements.catalogGrid.innerHTML = filtered.map((p, i) => cardHTML(p, i)).join('');
+}
+
+// ---------- Bestsellers (Fase 4) ----------
+// Seleccionamos los 4 productos con stock <= 1 (las "ultimas unidades")
+// para crear urgencia honesta — son las piezas mas escasas, no inventamos
+// metricas de "mas vendidas" que no tenemos. Si no hay 4 con stock <= 1,
+// completamos con disponibles ordenados por mas recientes.
+// La seccion se oculta entera si hay 0 candidatos (admin recien empezando).
+function renderBestsellers() {
+  if (!elements.bestsellersGrid || !elements.bestsellers) return;
+
+  const available = state.products.filter((p) => Boolean(p.available) && Number(p.stock) > 0);
+  // Prioridad: stock = 1 (ultima unidad), luego stock = 2, etc.
+  const sorted = [...available].sort((a, b) => {
+    if (a.stock !== b.stock) return a.stock - b.stock;
+    // Mismo stock: el mas reciente arriba.
+    return new Date(b.lastUpdated || b.createdAt || 0) - new Date(a.lastUpdated || a.createdAt || 0);
+  });
+  const picks = sorted.slice(0, 4);
+
+  if (picks.length === 0) {
+    elements.bestsellers.classList.add('hidden');
+    elements.bestsellersGrid.innerHTML = '';
+    return;
+  }
+  elements.bestsellers.classList.remove('hidden');
+  elements.bestsellersGrid.innerHTML = picks.map((p) => bestsellerCardHTML(p)).join('');
+}
+
+function bestsellerCardHTML(product) {
+  const img = buildImageSources(product.imageUrl);
+  const srcsetAttr = img.srcset ? ` srcset="${escapeAttribute(img.srcset)}"` : '';
+  const sizesAttr  = img.sizes  ? ` sizes="${escapeAttribute(img.sizes)}"`   : '';
+  const stockLabel = Number(product.stock) === 1
+    ? 'Ultima unidad'
+    : `${product.stock} disponibles`;
+
+  return `
+    <article class="bestseller-card" data-bestseller-id="${escapeAttribute(product.id)}">
+      <div class="bestseller-image-wrap">
+        <img
+          class="bestseller-image"
+          src="${escapeAttribute(img.src)}"${srcsetAttr}${sizesAttr}
+          alt="${escapeAttribute(product.name)}"
+          loading="lazy"
+          decoding="async"
+          onerror="this.onerror=null;this.srcset='';this.src='${FALLBACK_IMAGE}'"
+        />
+      </div>
+      <div class="bestseller-info">
+        <p class="bestseller-brand">${escapeHtml(product.brand)}</p>
+        <h3 class="bestseller-name">${escapeHtml(product.name)}</h3>
+        <p class="bestseller-price">${formatCurrency(product.price)}</p>
+        <p class="bestseller-stock">${escapeHtml(stockLabel)}</p>
+      </div>
+    </article>
+  `;
 }
 
 function cardHTML(product, index = 99) {

@@ -2338,6 +2338,233 @@ body.detail-open { overflow: hidden; }
 .wishlist-item .actions { display: flex; gap: 6px; }
 
 /* ===========================================================
+   9B. BESTSELLERS — fondo negro, productos con stock <= 1
+   Contraste fuerte despues del catalogo blanco. Evoca "drop"
+   editorial: el ojo descansa en negro y los productos brillan.
+   Mismo grid que el catalogo (4/3/2 cols por breakpoint).
+   =========================================================== */
+.bestsellers {
+  background: var(--ink);
+  color: var(--bg);
+  /* Padding generoso: la seccion respira fuerte sobre negro y se
+     siente como un capitulo aparte de la pagina, no como un grid mas. */
+  padding: clamp(64px, 9vw, 110px) 0;
+  /* Margin top genera el "salto" visual del catalogo blanco al negro. */
+  margin-top: clamp(48px, 6vw, 80px);
+}
+.bestsellers.hidden { display: none; }
+.bestsellers-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.bestsellers-head {
+  display: grid;
+  gap: 6px;
+  margin-bottom: clamp(36px, 5vw, 56px);
+  text-align: left;
+}
+.bestsellers-eyebrow {
+  font-family: "Jost", sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+}
+.bestsellers-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(28px, 4vw, 48px);
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+  margin: 0;
+  color: var(--bg);
+}
+.bestsellers-subtitle {
+  font-family: "Jost", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 8px 0 0;
+}
+.bestsellers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 48px 28px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .bestsellers-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 22px; }
+}
+@media (max-width: 780px) {
+  .bestsellers-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 14px; }
+}
+.bestseller-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.28s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+@media (hover: hover) {
+  .bestseller-card:hover { transform: translateY(-3px); }
+}
+.bestseller-card:active { transform: translateY(0) scale(0.992); }
+@media (prefers-reduced-motion: reduce) {
+  .bestseller-card,
+  .bestseller-card:hover,
+  .bestseller-card:active { transform: none; transition: none; }
+}
+.bestseller-image-wrap {
+  position: relative;
+  overflow: hidden;
+  /* Bg blanco para que la foto respire sobre el negro de la seccion.
+     Mismo aspect 4:5 + contain del catalogo: paridad visual. */
+  background: var(--bg);
+  aspect-ratio: 4 / 5;
+}
+.bestseller-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  transition: transform 0.6s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+.bestseller-card:hover .bestseller-image { transform: scale(1.035); }
+.bestseller-info {
+  display: grid;
+  gap: 4px;
+  padding: 0;
+}
+.bestseller-brand {
+  font-family: "Jost", sans-serif;
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+}
+.bestseller-name {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  color: var(--bg);
+  margin: 2px 0 0;
+}
+.bestseller-price {
+  font-family: "Jost", sans-serif;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  color: var(--bg);
+  margin: 6px 0 0;
+}
+.bestseller-stock {
+  font-family: "Jost", sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 4px 0 0;
+}
+.bestsellers-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: clamp(36px, 5vw, 56px);
+  font-family: "Jost", sans-serif;
+  font-size: 0.74rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bg);
+  text-decoration: none;
+  padding: 12px 0 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  transition: border-color 0.25s ease, transform 0.25s ease;
+}
+.bestsellers-cta:hover {
+  border-bottom-color: var(--bg);
+  transform: translateX(2px);
+}
+.bestsellers-cta svg { transition: transform 0.25s ease; }
+.bestsellers-cta:hover svg { transform: translateX(3px); }
+
+/* ===========================================================
+   9C. ORIGIN — story editorial, credibilidad
+   Fondo blanco con titulo grande Fraunces serif. La parte en
+   <em> recibe italica natural de la fuente para texturar el copy.
+   =========================================================== */
+.origin {
+  padding: clamp(80px, 10vw, 140px) 0;
+  background: var(--bg);
+}
+.origin-inner {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 24px;
+  text-align: center;
+}
+.origin-eyebrow {
+  font-family: "Jost", sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 18px;
+}
+.origin-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(32px, 5.5vw, 64px);
+  letter-spacing: -0.015em;
+  line-height: 1.05;
+  color: var(--ink);
+  margin: 0 0 36px;
+}
+.origin-title em {
+  font-style: italic;
+  /* Italica + serif lujosa: el corte editorial de la frase.
+     Slight weight bump opcional via opsz si la fuente lo soporta. */
+  font-feature-settings: "ss01" on;
+}
+.origin-body {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+  margin: 0 auto 36px;
+  font-family: "Jost", sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--ink-soft);
+}
+.origin-body p { margin: 0; }
+.origin-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "Jost", sans-serif;
+  font-size: 0.74rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 14px 22px;
+  border: 1px solid var(--ink);
+  transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+}
+.origin-cta:hover {
+  background: var(--ink);
+  color: var(--bg);
+  transform: translateY(-1px);
+}
+.origin-cta svg { transition: transform 0.25s ease; }
+.origin-cta:hover svg { transform: translateX(3px); }
+
+/* ===========================================================
    10. FOOTNOTE — editorial minimal
    Hairline arriba, tipografia con letter-spacing. Separa la pagina
    del fin del grid sin repetir la carga visual del topbar.
@@ -2355,6 +2582,43 @@ body.detail-open { overflow: hidden; }
   text-align: center;
 }
 .footnote p { margin: 6px 0; }
+
+/* Linea de marcas: presencia tipografica de las casas que vendemos,
+   sin logos. Letter-spacing amplio + serif fuera (Jost) para que lea
+   como una lista editorial y no como SEO keyword stuffing. */
+.footnote-brands {
+  font-family: "Jost", sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  color: var(--ink-soft);
+  margin: 0 0 14px !important;
+}
+/* Linea de meta: WhatsApp + last updated, separados por bullet sutil. */
+.footnote-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.7rem;
+  margin-bottom: 4px !important;
+}
+.footnote-meta a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line-strong);
+  padding-bottom: 1px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.footnote-meta a:hover {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.footnote-sep {
+  color: var(--ink-mute);
+  opacity: 0.5;
+}
+
 .footnote .credits {
   font-size: 0.66rem;
   opacity: 0.7;

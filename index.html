@@ -57,7 +57,7 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Jost:wght@300;400;500;600;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles.css?v=20260423-3" />
+  <link rel="stylesheet" href="styles.css?v=20260423-4" />
 </head>
 <body>
 
@@ -235,6 +235,55 @@
   <main class="catalog">
     <section id="catalogGrid" class="catalog-grid" aria-live="polite"></section>
   </main>
+
+  <!-- 5B. BEST SELLERS — fondo negro, productos con stock <= 1 -->
+  <!-- JS render: oculto si no hay candidatos. Click en card abre detail. -->
+  <section id="bestsellers" class="bestsellers hidden" aria-labelledby="bestsellersTitle">
+    <div class="bestsellers-inner">
+      <header class="bestsellers-head">
+        <p class="bestsellers-eyebrow">Pocas unidades</p>
+        <h2 id="bestsellersTitle" class="bestsellers-title">Las piezas mas buscadas</h2>
+        <p class="bestsellers-subtitle">Si te llama, no esperes — son piezas unicas.</p>
+      </header>
+      <div id="bestsellersGrid" class="bestsellers-grid"></div>
+      <a class="bestsellers-cta" href="#catalogGrid" data-action="scroll-catalog">
+        Ver todo el catalogo
+        <svg viewBox="0 0 24 24" aria-hidden="true" width="14" height="14">
+          <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- 5C. ORIGEN — story editorial, credibilidad -->
+  <section class="origin" aria-labelledby="originTitle">
+    <div class="origin-inner">
+      <p class="origin-eyebrow">Sobre American Vault</p>
+      <h2 id="originTitle" class="origin-title">
+        De boutiques en USA.<br/>
+        <em>A tus manos en Lima.</em>
+      </h2>
+      <div class="origin-body">
+        <p>
+          Cada cartera que vive en American Vault llega importada desde
+          tiendas oficiales en Estados Unidos. Las elegimos a mano —
+          solo piezas autenticas de Guess, Michael Kors, Tommy Hilfiger,
+          Steve Madden, Nautica y Juicy Couture.
+        </p>
+        <p>
+          Stock limitado, por unidad. Lo que ves es lo que hay: sin
+          duplicados, sin reposiciones rapidas. Por eso, si una pieza
+          te llama la atencion, no la pienses dos veces.
+        </p>
+      </div>
+      <a class="origin-cta" id="originCTA" href="#" target="_blank" rel="noopener noreferrer">
+        Pregunta lo que quieras
+        <svg viewBox="0 0 24 24" aria-hidden="true" width="14" height="14">
+          <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </div>
+  </section>
 
   <!-- 6. FILTER DRAWER ----------------------------------------- -->
   <div id="drawerScrim" class="drawer-scrim" aria-hidden="true"></div>
@@ -442,7 +491,18 @@
 
   <!-- 8. FOOTNOTE ---------------------------------------------- -->
   <footer class="footnote">
-    <p id="lastUpdated">Sin actualizaciones aun.</p>
+    <!-- Marcas que vendemos: presencia tipografica, sin logos para
+         no entrar en territorio de "marketplace" — somos curadora. -->
+    <p class="footnote-brands">
+      Guess · Michael Kors · Tommy Hilfiger ·
+      Nautica · Steve Madden · Juicy Couture
+    </p>
+    <!-- Contact + ultima actualizacion en una linea editorial. -->
+    <p class="footnote-meta">
+      <a id="footerWhatsapp" href="#" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      <span class="footnote-sep" aria-hidden="true">·</span>
+      <span id="lastUpdated">Sin actualizaciones aun.</span>
+    </p>
     <p class="credits">Modelo 3D del hero: <a href="https://animatedheaven.weebly.com" target="_blank" rel="noopener noreferrer">animatedheaven</a>.</p>
     <p class="made-by">
       <span class="made-by-rule" aria-hidden="true"></span>
@@ -622,7 +682,7 @@
   <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/loaders/GLTFLoader.js" />
   <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/environments/RoomEnvironment.js" />
 
-  <script type="module" src="app.js?v=20260423-3"></script>
+  <script type="module" src="app.js?v=20260423-4"></script>
   <script type="module" src="src/hero.js"></script>
 </body>
 </html>
