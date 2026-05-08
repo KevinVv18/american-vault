@@ -21,6 +21,12 @@ const topbar  = document.querySelector('.topbar');
 
 if (hero && bagSvg) {
   const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Parallax del grain: solo en desktop con hover real (mouse), sin
+  // preferencia de reducir movimiento. En mobile/touch el mix-blend-mode
+  // + translateY tick-a-tick rompe el FPS, asi que se queda estatico.
+  const canParallaxGrain = window.matchMedia(
+    '(min-width: 860px) and (hover: hover) and (prefers-reduced-motion: no-preference)'
+  ).matches;
 
   // Estado compartido entre scroll handler y loop 3D.
   const state = {
@@ -158,6 +164,16 @@ if (hero && bagSvg) {
     // recarga la pagina (no la sacamos al volver a 0) — ya entendio.
     if (state.progress > 0.05 && !hero.classList.contains('hero-has-scrolled')) {
       hero.classList.add('hero-has-scrolled');
+    }
+
+    // ---- grain parallax (desktop+hover only) ----
+    // Translate sutil del grain al scrollear, da sensacion de "pelicula
+    // viva" en la escena. Solo activo donde la feature query lo permite
+    // (desktop con mouse + sin reduce-motion); en mobile se queda estatico.
+    if (canParallaxGrain) {
+      // Range: -64px sobre todo el hero. Imperceptible per-frame, pero
+      // notable acumulado al pasar el scrollytelling completo.
+      hero.style.setProperty('--grain-y', `${-p * 64}px`);
     }
 
     // ---- topbar dark/light sync con el gradiente del hero ----
@@ -438,9 +454,20 @@ if (hero && bagSvg) {
     const START   = -Math.PI * 0.25;       // 315deg
     const END     = Math.PI * 1.5;         // 270deg (front-on calibrado)
     const SWEEP   = END - START;            // 7PI/4 = 315deg
+    // ---- Entry animation: cuando el 3D termina de cargar y el usuario
+    // esta en el first fold, hacemos una "entrada" elegante de la cartera
+    // (~900ms): un offset de rotY y tilt que decae con easeOutCubic, dando
+    // sensacion de que la pieza "se posa" en escena. Combinado con el
+    // cross-fade SVG↔canvas de 1.2s del CSS, lee como apertura editorial.
+    // Si el usuario ya scrolleo (>0.06), no hay entry — saltamos al estado
+    // correspondiente al scroll actual sin animacion.
+    const ENTRY_ROT_OFFSET  = -Math.PI * 0.34;  // ~61deg extra al inicio
+    const ENTRY_TILT_OFFSET = -0.32;             // cabeceo hacia abajo
+    let entryT = 1; // 1 = sin entry; entry baja a 0 y vuelve a 1 con tween
     let lastP = -1;
     function render3D(p) {
-      if (p !== lastP) {
+      const entryActive = entryT < 1;
+      if (p !== lastP || entryActive) {
         // easeOutCubic solo en el ultimo 30% para settling final
         let pe = p;
         if (p > 0.7) {
@@ -448,7 +475,12 @@ if (hero && bagSvg) {
           const eased = 1 - Math.pow(1 - t, 3);
           pe = 0.7 + eased * 0.3;
         }
-        pivot.rotation.y = START + pe * SWEEP;
+        // Entry offsets (decaen con entryT 0→1).
+        const entryEase = entryActive ? 1 - Math.pow(1 - entryT, 3) : 1;
+        const entryRotOff  = (1 - entryEase) * ENTRY_ROT_OFFSET;
+        const entryTiltOff = (1 - entryEase) * ENTRY_TILT_OFFSET;
+
+        pivot.rotation.y = START + pe * SWEEP + entryRotOff;
         // Dolly-in sutil al cruzar el medio (mas cerca cuando cruza el canto)
         const edge = Math.sin(p * Math.PI); // 0 al inicio/fin, 1 al medio
         camera.position.z = 3.1 - edge * 0.32;
@@ -456,7 +488,7 @@ if (hero && bagSvg) {
         // pero en el tramo final (p>0.85) forzamos a 0 para que el
         // encuadre frontal sea perfectamente recto.
         const tiltFactor = p > 0.85 ? Math.max(0, 1 - (p - 0.85) / 0.15) : 1;
-        pivot.rotation.x = Math.sin(p * Math.PI * 2) * 0.06 * tiltFactor;
+        pivot.rotation.x = (Math.sin(p * Math.PI * 2) * 0.06 * tiltFactor) + entryTiltOff;
 
         // ---- Contact shadow: responde al angulo de rotacion ----
         // profileness = 1 cuando la cartera esta 90 grados girada (silueta
@@ -490,7 +522,9 @@ if (hero && bagSvg) {
           -KEY_BASE.x * sin + KEY_BASE.z * cos
         );
 
-        lastP = p;
+        // Solo cacheamos lastP cuando NO estamos animando entry, asi el
+        // siguiente frame recalcula la rotacion con el nuevo entryT.
+        if (!entryActive) lastP = p;
       }
       renderer.render(scene, camera);
     }
@@ -520,6 +554,25 @@ if (hero && bagSvg) {
     state.render3D = render3D;
     stage.classList.add('hero-has-3d');
     onResize(); // dispara un render inicial
+
+    // ---- Entry tween: solo si el usuario sigue en el primer fold ----
+    // Si pAtLoad < 0.06 → la cartera "se posa" en escena con un offset
+    // de rotacion + tilt que decae 900ms con easeOutCubic. Si ya scrolleo
+    // (>0.06) o reduce-motion, no hay entry — saltamos directo al estado
+    // del scroll actual.
+    const pAtLoad = state.progress;
+    if (pAtLoad < 0.06 && !prefersReduced) {
+      const ENTRY_DURATION = 900;
+      const startTs = performance.now();
+      entryT = 0;
+      const entryStep = () => {
+        const t = Math.min(1, (performance.now() - startTs) / ENTRY_DURATION);
+        entryT = t;
+        render3D(state.progress);
+        if (t < 1) requestAnimationFrame(entryStep);
+      };
+      requestAnimationFrame(entryStep);
+    }
 
     // debug-only: en dev, expose para inspeccion desde consola.
     // se deja condicionado a hostname local para no filtrar en prod.

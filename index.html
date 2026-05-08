@@ -57,7 +57,7 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Jost:wght@300;400;500;600;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles.css?v=20260423-6" />
+  <link rel="stylesheet" href="styles.css?v=20260423-7" />
 </head>
 <body>
 
@@ -208,6 +208,17 @@
 
   <!-- 2b. CATALOGO HEADER (bajo hero) -------------------------- -->
   <section class="page-header">
+    <!-- Hairline puente: separa el hero del catalogo con un detalle
+         editorial (linea fina + monograma chiquito centrado + linea fina).
+         No agrega ruido — solo respira y hace que el cambio de fondo
+         negro→blanco se sienta intencional, como una transicion de
+         capitulo en revista impresa. -->
+    <div class="page-header-rule" aria-hidden="true">
+      <span class="page-header-rule-line"></span>
+      <img class="page-header-rule-mark" src="assets/brand/icon-av-black.svg"
+           alt="" width="223" height="260" decoding="async" />
+      <span class="page-header-rule-line"></span>
+    </div>
     <p class="tagline">El catalogo</p>
     <h1>Carteras disponibles ahora</h1>
     <p id="pageCount" class="count">Cargando catalogo...</p>
@@ -719,7 +730,7 @@
   <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/loaders/GLTFLoader.js" />
   <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/environments/RoomEnvironment.js" />
 
-  <script type="module" src="app.js?v=20260423-6"></script>
+  <script type="module" src="app.js?v=20260423-7"></script>
   <script type="module" src="src/hero.js"></script>
 </body>
 </html>

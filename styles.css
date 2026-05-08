@@ -248,10 +248,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .hero-logo {
   /* Solo monograma AV (sin wordmark). El topbar ya tiene "American Vault"
-     como texto — duplicarlo aqui pegado era redundante. Tamaño pequeño
-     a proposito: el monograma es un sello, no el titulo. viewBox SVG
-     223x260 (ratio ~0.86:1), asi que height ≈ width * 1.17. */
-  width: clamp(48px, 9vw, 72px);
+     como texto — duplicarlo aqui pegado era redundante. Tamaño con mas
+     presencia (56-92 vs 48-72 antes): el monograma es nuestro "sello"
+     editorial; era casi invisible en mobile. Sigue siendo proporcional
+     al hero y no compite con el bag central. viewBox SVG 223x260
+     (ratio ~0.86:1), height ≈ width * 1.17. */
+  width: clamp(56px, 10vw, 92px);
   height: auto;
   display: block;
   opacity: 0.94;
@@ -379,12 +381,28 @@ button, input, select, textarea { font: inherit; color: inherit; }
   height: 100%;
   display: block;
   opacity: 0;
-  transition: opacity 0.6s ease;
+  /* Cross-fade premium: 1.2s con cubic-bezier suave (vs 0.6s ease antes).
+     Da tiempo a que el canvas WebGL pinte el primer frame solido antes
+     de revelarlo, evitando un flash gris-canvas-vacio entre el fade out
+     del SVG y el fade in del 3D real. */
+  transition: opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
   z-index: 1;
 }
 .hero-stage.hero-has-3d .hero-canvas { opacity: 1; }
-.hero-stage.hero-has-3d .hero-bag    { opacity: 0; visibility: hidden; }
+/* Cross-fade real: el SVG hace fade out con la misma duracion que el
+   canvas hace fade in. visibility:hidden se aplica con transition-delay
+   = duracion del fade, asi el SVG sigue visible (semi-transparente)
+   durante el 1.2s del cross y solo desaparece del DOM al final. */
+.hero-stage.hero-has-3d .hero-bag {
+  opacity: 0;
+  visibility: hidden;
+}
+.hero-bag {
+  transition:
+    opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 1.2s;
+}
 
 .hero-bag {
   /* Cap reducido (vs 58vw antes): el nuevo lockup del logo es mas alto
@@ -397,7 +415,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   will-change: transform;
   backface-visibility: visible;
   filter: drop-shadow(0 24px 40px rgba(255, 255, 255, 0.05));
-  transition: opacity 0.5s ease;
+  /* transition definida abajo en el cross-fade SVG↔3D — usa la misma
+     duracion 1.2s que el canvas para un cross real, no un cut. */
 }
 .hero-bag svg {
   width: 100%;
@@ -578,11 +597,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
      llega al bg claro al fondo del hero. */
   opacity: 0.11;
   mix-blend-mode: screen;
-  /* Grain estatico: la variante con parallax (translateY por scroll)
-     disparaba repaints del stacking context con mix-blend-mode en cada
-     tick, y en mobile de gama baja producia jank perceptible. El
-     movimiento era de solo 64px sobre 200vh — imperceptible para el
-     usuario y costoso para el compositor. Lo dejamos quieto. */
+  /* Grain con parallax adaptive: en mobile + tablet siempre estatico
+     (mix-blend-mode + translateY en cada scroll tick rompe el FPS en
+     gama baja). En desktop con hover real (mouse, no touch) reactivamos
+     el parallax — un compositor bueno absorbe los repaints sin jank.
+     hero.js setea --grain-y solo cuando se cumple la feature query. */
+  transform: translateY(var(--grain-y, 0));
+}
+@media (min-width: 860px) and (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .hero-grain {
+    will-change: transform;
+  }
 }
 
 /* Topbar invertido cuando el hero ocupa la vista.
@@ -748,6 +773,35 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 56px 24px 24px;
   text-align: center;
 }
+
+/* Hairline puente entre hero y catalogo: linea fina + monograma AV
+   chiquito + linea fina. Marca el cambio de capitulo (hero negro
+   editorial → catalogo blanco minimalista) como una transicion
+   intencional. Sin esto, el blanco del fin del hero gradient se
+   funde con el blanco del catalogo y el cambio se siente abrupto. */
+.page-header-rule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 3vw, 28px);
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto clamp(40px, 6vw, 64px);
+  padding-top: clamp(24px, 4vw, 40px);
+}
+.page-header-rule-line {
+  flex: 1;
+  height: 1px;
+  background: var(--line-strong);
+  opacity: 0.55;
+}
+.page-header-rule-mark {
+  width: clamp(18px, 2.4vw, 24px);
+  height: auto;
+  display: block;
+  opacity: 0.7;
+}
+
 .page-header .tagline {
   margin: 0 0 12px;
   color: var(--ink-mute);
