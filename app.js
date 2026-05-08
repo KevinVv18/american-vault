@@ -157,6 +157,7 @@ async function init() {
 function cacheElements() {
   // Topbar
   elements.lockButton           = document.getElementById('lockButton');
+  elements.topSearchBtn         = document.getElementById('topSearchBtn');
   elements.topWhatsapp          = document.getElementById('topWhatsapp');
   elements.wishlistTopBtn       = document.getElementById('wishlistTopBtn');
   elements.wishlistTopCount     = document.getElementById('wishlistTopCount');
@@ -279,6 +280,33 @@ function bindEvents() {
   // Topbar
   elements.lockButton.addEventListener('click', handleLockButton);
   elements.wishlistTopBtn.addEventListener('click', openWishlistDrawer);
+
+  // Search: abre el filter drawer y enfoca el input. Usamos el drawer
+  // existente en vez de un overlay nuevo para no duplicar UI — el drawer
+  // ya tiene busqueda + todos los filtros, dandole acceso completo al
+  // usuario que llega buscando algo especifico.
+  if (elements.topSearchBtn) {
+    elements.topSearchBtn.addEventListener('click', () => {
+      openDrawer();
+      // Pequeno delay para que el focus no compita con el animation del drawer.
+      setTimeout(() => elements.searchInput?.focus(), 240);
+    });
+  }
+
+  // Skip-to-catalog (hero): scroll suave al grid principal saltandose el
+  // scrollytelling de 130/200vh. Usamos JS explicito en vez de
+  // scroll-behavior:smooth global para no afectar otros anchors y poder
+  // respetar reduce-motion.
+  const skipLink = document.querySelector('[data-action="skip-to-catalog"]');
+  if (skipLink) {
+    skipLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = elements.catalogGrid;
+      if (!target) return;
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    });
+  }
 
   // Flash banner close (delegado: solo hay un boton dentro)
   if (elements.flashMessage) {

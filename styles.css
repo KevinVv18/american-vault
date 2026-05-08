@@ -241,7 +241,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .hero-top {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   opacity: 0.95;
 }
 .hero-logo {
@@ -580,6 +582,132 @@ button, input, select, textarea { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .hero-vault { height: 100vh; }
   .hero-bag   { transform: rotateY(16deg); }
+}
+
+/* ---- Skip-to-catalog: text-link debajo del monograma AV ----
+   Para usuarios impacientes (especialmente mobile) que llegan a la
+   home y ya saben que vienen a comprar — no quieren scrollear 130-200vh
+   de scrollytelling antes de ver productos. Hace smooth scroll al grid.
+   Estilo: muy bajo contraste, decorativo. Quien tiene paciencia, ni
+   lo ve; quien quiere atajo, lo agradece. */
+.hero-skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-family: "Jost", sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  transition: color 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+.hero-skip:hover {
+  color: rgba(255, 255, 255, 0.85);
+  border-bottom-color: rgba(255, 255, 255, 0.6);
+}
+.hero-skip svg { transition: transform 0.25s ease; }
+.hero-skip:hover svg { transform: translateX(2px); }
+
+/* ---- Scroll hint: linea vertical + label rotado, abajo del hero ----
+   Solo visible en mobile (donde el scrollytelling no es obvio) y solo
+   en el primer fold. Hero.js le agrega .is-hidden cuando el progress
+   pasa de 0.05 (el usuario ya entendio que tiene que scrollear).
+   Comportamiento desktop: oculto siempre — los acts ya hacen el "tease".
+   La linea pulsa en infinite loop sutil para llamar la atencion sin
+   gritar. Reduce-motion: la linea no pulsa, solo aparece estatica. */
+.hero-scroll-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: none; /* override en mobile abajo */
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.hero-scroll-hint-label {
+  font-family: "Jost", sans-serif;
+  font-size: 0.56rem;
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  /* Vertical text via writing-mode evita transforms que bloquean
+     el text rendering subpixel en algunos browsers. */
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+.hero-scroll-hint-line {
+  width: 1px;
+  height: 36px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: heroScrollHintPulse 2.4s ease-in-out infinite;
+}
+@keyframes heroScrollHintPulse {
+  0%, 100% { transform: scaleY(0.6); opacity: 0.5; }
+  50%      { transform: scaleY(1);   opacity: 1; }
+}
+.hero-vault.hero-has-scrolled .hero-scroll-hint {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-scroll-hint-line { animation: none; }
+}
+
+/* ---- FASE A: Mobile fluido ----
+   Hero mas corto (130vh vs 200vh): reduce el scroll necesario para
+   pasar el scrollytelling y llegar al catalogo. El catalogo es la
+   accion principal en e-commerce; no queremos que el storytelling
+   tape el producto en mobile. Los rangos de los actos en hero.js
+   son sobre progress (0..1), siguen funcionando con cualquier altura.
+
+   Tambien: scroll-hint visible (mobile-only) y touch targets 44px. */
+@media (max-width: 780px) {
+  .hero-vault { height: 130vh; }
+  .hero-scroll-hint { display: flex; }
+
+  /* Touch targets: minimo 44x44 (Apple HIG / Material Design). Antes
+     eran 36x36, suficiente para mouse pero apretado para dedo. */
+  .icon-btn { width: 44px; height: 44px; }
+
+  /* Topbar derecho con 3 iconos (search + WA + wishlist) en mobile:
+     reduce el gap para evitar overflow y mantiene proporcion. */
+  .topbar-right { gap: 2px; }
+
+  /* Padding sticky reducido para que el bag respire entre topbar y acts */
+  .hero-sticky {
+    padding: clamp(72px, 11vh, 96px) 18px clamp(56px, 9vh, 84px);
+  }
+}
+
+/* ---- Landscape mobile / tablet ----
+   En orientacion horizontal con poca altura (max-height: 600px) los
+   actos se aplastan contra el bag. Comprimimos padding + tamano de
+   tipografia + min-height de los acts para que la composicion entre
+   en el viewport sin cortar nada. */
+@media (max-height: 600px) and (max-width: 1100px) {
+  .hero-vault { height: 110vh; }
+  .hero-sticky {
+    padding: clamp(48px, 8vh, 72px) 24px clamp(36px, 6vh, 56px);
+    gap: clamp(16px, 2.5vh, 28px);
+  }
+  .hero-act p { font-size: clamp(1.4rem, 5.5vw, 2.4rem); }
+  .hero-acts { min-height: clamp(96px, 18vh, 132px); }
+  .hero-bag  { width: clamp(140px, 38vw, 220px); }
+  .hero-skip { margin-top: 8px; }
+  .hero-scroll-hint { display: none; } /* sin altura para mostrarlo */
 }
 
 /* ===========================================================

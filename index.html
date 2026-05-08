@@ -57,7 +57,7 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Jost:wght@300;400;500;600;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles.css?v=20260423-4" />
+  <link rel="stylesheet" href="styles.css?v=20260423-5" />
 </head>
 <body>
 
@@ -80,6 +80,15 @@
       </a>
 
       <div class="topbar-right">
+        <!-- Search: abre el filter drawer y enfoca el input de busqueda.
+             Posicionado primero porque es la accion mas usada en una
+             tienda de catalogo. Mismo estilo que el resto de icon-btns. -->
+        <button id="topSearchBtn" class="icon-btn" type="button" aria-label="Buscar en el catalogo">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round">
+            <circle cx="11" cy="11" r="7"/>
+            <line x1="20" y1="20" x2="16.5" y2="16.5"/>
+          </svg>
+        </button>
         <a id="topWhatsapp" class="icon-btn" href="#" target="_blank" rel="noopener noreferrer" aria-label="Contacto por WhatsApp">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20.52 3.48A11.94 11.94 0 0 0 12.06 0C5.5 0 .14 5.35.14 11.91c0 2.1.55 4.15 1.6 5.96L0 24l6.3-1.66a11.92 11.92 0 0 0 5.76 1.47h.01c6.56 0 11.9-5.35 11.9-11.91 0-3.18-1.24-6.17-3.45-8.42ZM12.07 21.6h-.01a9.66 9.66 0 0 1-4.93-1.35l-.35-.21-3.74.98 1-3.64-.23-.37a9.58 9.58 0 0 1-1.48-5.1c0-5.32 4.34-9.66 9.67-9.66 2.58 0 5.01 1.01 6.84 2.84a9.6 9.6 0 0 1 2.83 6.84c0 5.32-4.33 9.67-9.6 9.67Zm5.32-7.24c-.29-.14-1.73-.85-2-.95-.27-.1-.47-.14-.66.14-.19.29-.76.95-.93 1.14-.17.19-.34.21-.63.07-.29-.14-1.23-.45-2.35-1.45-.87-.77-1.45-1.73-1.62-2.02-.17-.29-.02-.45.13-.59.13-.13.29-.34.43-.51.14-.17.19-.29.29-.48.1-.19.05-.36-.02-.51-.07-.14-.66-1.6-.91-2.19-.24-.58-.49-.5-.66-.51h-.57c-.19 0-.5.07-.76.36-.26.29-1 .98-1 2.39s1.02 2.77 1.17 2.96c.14.19 2.01 3.07 4.88 4.3.68.29 1.21.47 1.62.6.68.22 1.3.19 1.79.12.55-.08 1.73-.71 1.97-1.39.24-.68.24-1.27.17-1.39-.07-.12-.27-.19-.56-.34Z"/>
@@ -105,6 +114,15 @@
              marca sin repetir el nombre. ICONO BLANCO.svg (viewBox 223x260). -->
         <img class="hero-logo" src="assets/brand/icon-av-white.svg"
              alt="American Vault" width="223" height="260" decoding="async" />
+        <!-- Skip-to-catalog: para usuarios impacientes en mobile, un text-link
+             sutil debajo del monograma. Hace scroll suave al grid principal
+             saltandose los 130/200vh del hero scrollytelling. -->
+        <a class="hero-skip" href="#catalogGrid" data-action="skip-to-catalog">
+          Ir directo al catalogo
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="11" height="11">
+            <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
       </div>
 
       <!-- Frame editorial (desktop): la cartera queda centrada con dos
@@ -147,6 +165,14 @@
            posiciona como ultima capa con mix-blend-mode overlay; pointer
            events: none para no comer clicks. Se desactiva en reduce-motion. -->
       <div class="hero-grain" aria-hidden="true"></div>
+
+      <!-- Scroll hint: linea vertical fina + label rotado en mobile.
+           Solo visible en mobile y en el primer fold (progress < 0.05).
+           Hero.js le agrega .is-hidden cuando el usuario empieza a scrollear. -->
+      <div class="hero-scroll-hint" aria-hidden="true">
+        <span class="hero-scroll-hint-label">scroll</span>
+        <span class="hero-scroll-hint-line"></span>
+      </div>
 
       <div class="hero-acts" id="heroActs">
         <div class="hero-act" data-act="1" aria-hidden="true">
@@ -682,7 +708,7 @@
   <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/loaders/GLTFLoader.js" />
   <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/environments/RoomEnvironment.js" />
 
-  <script type="module" src="app.js?v=20260423-4"></script>
+  <script type="module" src="app.js?v=20260423-5"></script>
   <script type="module" src="src/hero.js"></script>
 </body>
 </html>

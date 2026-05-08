@@ -152,6 +152,14 @@ if (hero && bagSvg) {
       if (!stock.played) maybePlayStock();
     }
 
+    // ---- scroll hint fade-out (mobile only) ----
+    // Una vez que el usuario empieza a scrollear (progress > 0.05), el
+    // hint cumplio su funcion y desaparece. La clase queda hasta que se
+    // recarga la pagina (no la sacamos al volver a 0) — ya entendio.
+    if (state.progress > 0.05 && !hero.classList.contains('hero-has-scrolled')) {
+      hero.classList.add('hero-has-scrolled');
+    }
+
     // ---- topbar dark/light sync con el gradiente del hero ----
     // BUG PREVIO: usabamos IntersectionObserver con threshold 0.35 sobre un
     // hero de 200vh. El ratio empieza en ~0.5 (100vh visible / 200vh total)
