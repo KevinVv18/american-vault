@@ -306,41 +306,54 @@ if (hero && bagSvg) {
     fill.position.set(0, -2, 2);
     scene.add(fill);
 
-    // --- materiales American Vault (D2: rebrand 3D) ---
-    // Decision de marca: NO usamos texturas PBR del modelo original (cuero
-    // marron + herraje dorado canon "luxury bag generico"). En su lugar,
-    // dos materiales puros que codifican nuestra identidad B&W minimalista:
-    //
-    //   leather  → cuero negro mate, casi sin reflejo del environment.
-    //              Sobre fondo negro la silueta lee por highlights de
-    //              key+rim, no por color del cuero. envMapIntensity bajo
-    //              evita que la sala blanca se "imprima" en el cuero.
-    //
-    //   hardware → champagne sutil (NO oro chillon). 94% metallic +
-    //              roughness baja → reflejos limpios pero discretos.
-    //              envMapIntensity alto: el herraje SI debe capturar
-    //              la sala (es lo que le da el "guino" de movimiento
-    //              cuando la cartera gira).
-    //
-    // Wins de no descargar las 12 WebPs (3 regiones x 4 maps):
-    //   - ~6-8MB menos de transferencia inicial
-    //   - First paint del 3D ~300-500ms mas rapido en mobile 4G
-    //   - Materiales unicos AV (no se confunden con cualquier free model)
-    //
-    // Los archivos en /assets/3d/handbag/textures/ siguen en repo por si
-    // queremos volver a la version texturizada, pero no se piden.
-    const leatherMat = new THREE.MeshStandardMaterial({
-      color:           0x080808,
-      roughness:       0.62,
-      metalness:       0.06,
-      envMapIntensity: 0.42
+    // --- cargar texturas PBR (paralelo) ---
+    const texLoader = new THREE.TextureLoader();
+    const base = 'assets/3d/handbag/textures/';
+
+    // loadTex: isColor=true -> SRGB (base color). isColor=false -> NoColorSpace
+    // (data maps: normal, metallic, roughness). Lo dejamos explicito para no
+    // depender del default del browser/TextureLoader, que cambia entre
+    // versiones y puede aplicar gamma a datos que deberian estar en linear.
+    const loadTex = (name, isColor) => new Promise((resolve, reject) => {
+      texLoader.load(
+        base + name,
+        (t) => {
+          t.colorSpace = isColor ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+          t.flipY = false; // FBX usa UV no volteadas
+          t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy?.() || 8);
+          resolve(t);
+        },
+        undefined,
+        reject
+      );
     });
-    const hardwareMat = new THREE.MeshStandardMaterial({
-      color:           0xb8a47e,  // champagne suave — luxe sin gritar
-      roughness:       0.18,
-      metalness:       0.94,
-      envMapIntensity: 1.55
-    });
+
+    // Materiales PBR por region. Las 4 texturas de Substance Painter son
+    // datos validos (base color negro con pespunte claro, metalness casi 0
+    // en cuero y casi 1 en herraje, roughness alto en cuero, bajo en metal).
+    // Dejamos que los mapas manejen metalness/roughness per pixel y solo
+    // ajustamos envMapIntensity para balancear: cuero capta poco reflejo,
+    // herraje mucho.
+    const regions = ['lower', 'metal', 'upper'];
+    const ENV = { lower: 0.55, metal: 1.0, upper: 0.55 };
+    const materials = {};
+    await Promise.all(regions.map(async (r) => {
+      const [map, normalMap, metalnessMap, roughnessMap] = await Promise.all([
+        loadTex(`purse_${r}_Base_color.webp`, true),
+        loadTex(`purse_${r}_normal.webp`,     false),
+        loadTex(`purse_${r}_metallic.webp`,   false),
+        loadTex(`purse_${r}_roughness.webp`,  false)
+      ]);
+      materials[r] = new THREE.MeshStandardMaterial({
+        map,
+        normalMap,
+        metalnessMap,
+        roughnessMap,
+        metalness: 1.0,   // multiplicador del mapa; el mapa decide per pixel
+        roughness: 1.0,
+        envMapIntensity: ENV[r]
+      });
+    }));
 
     // --- cargar GLB ---
     // Migramos de FBX a GLB (scripts/convert-fbx-to-glb.mjs lo genera offline).
@@ -374,20 +387,25 @@ if (hero && bagSvg) {
     });
     strayLights.forEach((l) => l.parent && l.parent.remove(l));
 
-    // Asignar nuestros 2 materiales por nombre de mesh: la malla 'metal' o
-    // que tenia material 'metal' previo → hardware (champagne). Todo lo
-    // demas (cuero superior + inferior + cualquier mesh sin nombre) → leather
-    // negro mate. Mas simple que las 3 regiones porque ya no nos importa
-    // distinguir 'lower' vs 'upper' (mismo material visual).
     model.traverse((child) => {
       if (!child.isMesh) return;
       child.castShadow = false;
       child.receiveShadow = false;
 
-      const nm   = (child.name || '').toLowerCase();
-      const prev = child.material?.name?.toLowerCase?.() || '';
-      const isHardware = nm.includes('metal') || prev.includes('metal');
-      child.material = isHardware ? hardwareMat : leatherMat;
+      const nm = (child.name || '').toLowerCase();
+      let mat = null;
+      if      (nm.includes('lower')) mat = materials.lower;
+      else if (nm.includes('metal')) mat = materials.metal;
+      else if (nm.includes('upper')) mat = materials.upper;
+      // Si el mesh no tiene nombre reconocible, intentamos inferir por
+      // material previo (FBX a veces empaqueta varios submeshes).
+      if (!mat) {
+        const prev = child.material?.name?.toLowerCase?.() || '';
+        if      (prev.includes('lower')) mat = materials.lower;
+        else if (prev.includes('metal')) mat = materials.metal;
+        else if (prev.includes('upper')) mat = materials.upper;
+      }
+      if (mat) child.material = mat;
     });
 
     // --- centrar y escalar para que entre en el frame ---
