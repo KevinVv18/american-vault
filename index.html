@@ -57,7 +57,7 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Jost:wght@300;400;500;600;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles.css?v=20260423-5" />
+  <link rel="stylesheet" href="styles.css?v=20260423-6" />
 </head>
 <body>
 
@@ -131,7 +131,7 @@
            ancho a la cartera. La row del grid sigue siendo 1fr. -->
       <div class="hero-stage-frame">
         <aside class="hero-side hero-side-left" aria-hidden="true">
-          <p>Importado&nbsp;·&nbsp;Auténtico&nbsp;·&nbsp;Perú</p>
+          <p>Importado&nbsp;·&nbsp;Auténtico&nbsp;·&nbsp;Único</p>
         </aside>
 
         <div class="hero-stage" id="heroStage">
@@ -156,7 +156,7 @@
         </div><!-- /.hero-stage -->
 
         <aside class="hero-side hero-side-right" aria-hidden="true">
-          <p>Est.&nbsp;·&nbsp;2025&nbsp;·&nbsp;Lima</p>
+          <p>Est.&nbsp;·&nbsp;2026&nbsp;·&nbsp;Chiclayo</p>
         </aside>
       </div><!-- /.hero-stage-frame -->
 
@@ -175,14 +175,22 @@
       </div>
 
       <div class="hero-acts" id="heroActs">
+        <!-- Acts alineados con el modelo de negocio: piezas importadas
+             desde USA, casi siempre unicas (no reponemos modelos), un
+             dueno por pieza. La voz del hero se conecta con el Origin
+             section abajo en lugar de competir con el. -->
         <div class="hero-act" data-act="1" aria-hidden="true">
-          <p>Cada pieza, 100% original.</p>
+          <p>De boutiques en USA.</p>
         </div>
         <div class="hero-act" data-act="2" aria-hidden="true">
-          <p>Hasta agotar stock.</p>
+          <p>Casi siempre única.</p>
         </div>
         <div class="hero-act" data-act="3">
-          <p>Enviamos a todo el Perú.</p>
+          <!-- Eyebrow editorial: trust signal de fundacion + ubicacion
+               real (Chiclayo, Lambayeque). Aparece sobre el headline
+               pero leve: lo que importa es la promesa de unicidad. -->
+          <p class="hero-act-eyebrow">Est. Ene 2026 · Chiclayo · Perú</p>
+          <p>Una pieza, un dueño.</p>
           <a href="#catalogGrid" class="hero-act-cta">
             <span>Ver catálogo</span>
             <svg viewBox="0 0 12 22" width="9" height="16" aria-hidden="true">
@@ -191,7 +199,7 @@
           </a>
           <p class="hero-stock-line" aria-live="polite">
             <span class="hero-stock-num" id="heroStockNum">—</span>
-            <span class="hero-stock-label">piezas esperándote</span>
+            <span class="hero-stock-label">únicas en stock</span>
           </p>
         </div>
       </div>
@@ -284,22 +292,23 @@
   <!-- 5C. ORIGEN — story editorial, credibilidad -->
   <section class="origin" aria-labelledby="originTitle">
     <div class="origin-inner">
-      <p class="origin-eyebrow">Sobre American Vault</p>
+      <p class="origin-eyebrow">Sobre American Vault · Est. Ene 2026 · Chiclayo</p>
       <h2 id="originTitle" class="origin-title">
         De boutiques en USA.<br/>
-        <em>A tus manos en Lima.</em>
+        <em>A tus manos.</em>
       </h2>
       <div class="origin-body">
         <p>
-          Cada cartera que vive en American Vault llega importada desde
-          tiendas oficiales en Estados Unidos. Las elegimos a mano —
-          solo piezas autenticas de Guess, Michael Kors, Tommy Hilfiger,
-          Steve Madden, Nautica y Juicy Couture.
+          Cada pieza que vive en American Vault llega importada desde
+          tiendas oficiales en Estados Unidos. La elegimos a mano —
+          autentica de Guess, Michael Kors, Tommy Hilfiger, Steve
+          Madden, Nautica o Juicy Couture.
         </p>
         <p>
-          Stock limitado, por unidad. Lo que ves es lo que hay: sin
-          duplicados, sin reposiciones rapidas. Por eso, si una pieza
-          te llama la atencion, no la pienses dos veces.
+          Una unidad por modelo. Cuando se va, casi nunca vuelve: no
+          reponemos. Hoy son carteras; manana, lo que se nos antoje
+          curar para ustedes. Si una pieza te llama, no la pienses dos
+          veces.
         </p>
       </div>
       <a class="origin-cta" id="originCTA" href="#" target="_blank" rel="noopener noreferrer">
@@ -527,6 +536,8 @@
     <p class="footnote-meta">
       <a id="footerWhatsapp" href="#" target="_blank" rel="noopener noreferrer">WhatsApp</a>
       <span class="footnote-sep" aria-hidden="true">·</span>
+      <span>Chiclayo · Lambayeque · Perú</span>
+      <span class="footnote-sep" aria-hidden="true">·</span>
       <span id="lastUpdated">Sin actualizaciones aun.</span>
     </p>
     <p class="credits">Modelo 3D del hero: <a href="https://animatedheaven.weebly.com" target="_blank" rel="noopener noreferrer">animatedheaven</a>.</p>
@@ -708,7 +719,7 @@
   <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/loaders/GLTFLoader.js" />
   <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/environments/RoomEnvironment.js" />
 
-  <script type="module" src="app.js?v=20260423-5"></script>
+  <script type="module" src="app.js?v=20260423-6"></script>
   <script type="module" src="src/hero.js"></script>
 </body>
 </html>

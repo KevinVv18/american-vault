@@ -259,7 +259,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* Frame editorial: 3 columnas en desktop para que la cartera quede
    "enmarcada" por texto vertical a cada lado (IMPORTADO·AUTÉNTICO·PERÚ
-   izq / EST·2025·LIMA der). En mobile las columnas laterales son
+   izq / EST·2026·CHICLAYO der). En mobile las columnas laterales son
    display:none y el stage ocupa todo el ancho. El frame es el que
    hereda la row 2 (1fr) del hero-sticky; internamente centra el stage.
    min-height:0 permite que el grid row no se estire de mas en Firefox. */
@@ -326,7 +326,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
     transform-origin: center;
   }
   .hero-side-right p {
-    /* +90deg: "EST · 2025 · LIMA" se lee de arriba hacia abajo, con
+    /* +90deg: "EST · 2026 · CHICLAYO" se lee de arriba hacia abajo, con
        el punto final abajo. Simetria visual con el left (ambos textos
        corren "hacia la cartera" — el ojo vuelve al centro). */
     transform: rotate(90deg);
@@ -456,6 +456,35 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: #fff;
   /* contrarresta el recorte visual del clamp en pantallas ultra-wide */
   max-width: 18ch;
+}
+/* Eyebrow del Act 3: fundacion + ciudad + pais.
+   Trust signal sutil arriba del headline "Una pieza, un dueno." Tipografia
+   small caps Jost con tracking ancho — lee como info de placa editorial,
+   no como copy de venta. Hairline rule debajo para separarlo del headline
+   sin un margen vacio que rompa el ritmo del Act 3. */
+.hero-act-eyebrow {
+  /* Override del p heredado (Fraunces enorme) — esto es Jost chiquito. */
+  font-family: "Jost", sans-serif !important;
+  font-weight: 400 !important;
+  font-size: 0.62rem !important;
+  letter-spacing: 0.32em !important;
+  text-transform: uppercase;
+  line-height: 1.2 !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  max-width: none !important;
+  padding-bottom: 14px;
+  margin-bottom: 4px !important;
+  position: relative;
+}
+.hero-act-eyebrow::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.32);
 }
 /* Act 2 es la linea mas "conceptual"; le damos un italic sutil para
    que sienta el ritmo tipografico editorial sin volverse caricatura. */
