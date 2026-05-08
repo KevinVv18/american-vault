@@ -1,0 +1,87 @@
+# ============================================================
+# American Vault — Apache config (Hostinger shared hosting)
+#
+# Lo critico aca: cache-control headers para resolver el dilema del
+# "los clientes ven la version vieja despues de un deploy". Estrategia:
+#
+#   - HTML nunca cachea  → cada visita pide fresh, descubre las
+#                          referencias actualizadas a CSS/JS (cuyo
+#                          query string ?v=<commit-sha> cambia cada deploy)
+#   - Versionados (CSS/JS) cachean 1 ano → el ?v=hash garantiza que
+#                          una URL apunta SIEMPRE al mismo contenido,
+#                          asi que browser puede ser agresivo sin riesgo
+#   - Assets (imagenes/fuentes/3D) cachean 30 dias con revalidate
+#
+# Esto + el sed en deploy.yml que sustituye __BUILD_HASH__ por el commit
+# SHA hace que el cache se invalide automaticamente en cada deploy.
+# Cero hard-refresh manual del cliente.
+# ============================================================
+
+# ============================================================
+# Cache-Control
+# ============================================================
+<IfModule mod_headers.c>
+  # ---- HTML: nunca cachear ----
+  # no-cache + no-store + must-revalidate para forzar al browser a
+  # pedir la version actual del HTML en cada navegacion. El HTML
+  # contiene las referencias <link href="styles.css?v=abc123"> y
+  # <script src="app.js?v=abc123">; si lo cachea, el query string
+  # cache-bust nunca se actualiza y servimos codigo viejo.
+  <FilesMatch "\.(html?)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+
+  # ---- CSS/JS versionados: cache 1 ano (immutable) ----
+  # GitHub Actions sustituye __BUILD_HASH__ por el commit SHA antes
+  # del rsync. Por eso una URL como styles.css?v=abc1234 es UNICA
+  # por commit — nunca apunta a contenido distinto. Cache 1 ano sin
+  # riesgo. immutable le dice al browser que ni siquiera revalide
+  # con If-None-Match (ahorra round-trip 304).
+  <FilesMatch "\.(css|js|mjs)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # ---- Imagenes/fuentes/3D: cache 30 dias revalidate ----
+  # URLs estables (sin query string), cambios poco frecuentes. 30 dias
+  # de cache + must-revalidate para chequear contra el server cuando
+  # expira (cheap, devuelve 304 si no cambio). Imagenes de productos
+  # vienen de Supabase Storage con su propio CDN, no las maneja apache.
+  <FilesMatch "\.(svg|webp|jpe?g|png|gif|ico|woff2|woff|ttf|otf|glb|gltf|fbx)$">
+    Header set Cache-Control "public, max-age=2592000, must-revalidate"
+  </FilesMatch>
+
+  # ---- Headers de seguridad ligeros ----
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# ============================================================
+# Mime types — Apache no reconoce algunos por default
+# ============================================================
+<IfModule mod_mime.c>
+  AddType model/gltf-binary       .glb
+  AddType model/gltf+json         .gltf
+  AddType image/webp              .webp
+  AddType font/woff2              .woff2
+  AddType application/javascript  .mjs
+</IfModule>
+
+# ============================================================
+# Compresion gzip — los assets de texto bajan ~70% mas chicos
+# ============================================================
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/json
+  AddOutputFilterByType DEFLATE image/svg+xml
+  AddOutputFilterByType DEFLATE text/xml
+  AddOutputFilterByType DEFLATE font/woff2
+</IfModule>
+
+# ============================================================
+# UTF-8 default
+# ============================================================
+AddDefaultCharset UTF-8

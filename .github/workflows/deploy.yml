@@ -27,6 +27,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Reemplaza __BUILD_HASH__ en index.html por los primeros 7
+      # caracteres del commit SHA. Hace cache-busting automatico:
+      # cada deploy cambia las URLs de styles.css?v=X y app.js?v=X
+      # a un valor unico, asi el browser baja la version nueva en
+      # la siguiente visita sin necesidad de hard-refresh manual.
+      # Combinado con .htaccess que fuerza HTML a no cachear, el
+      # ciclo es: HTML fresh -> nuevas refs -> JS/CSS nuevos.
+      - name: Inject build hash into HTML
+        run: |
+          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+          sed -i "s/__BUILD_HASH__/${SHA_SHORT}/g" index.html
+          echo "Cache-bust hash: ${SHA_SHORT}"
+          grep -c "${SHA_SHORT}" index.html | xargs -I{} echo "Replaced {} references in index.html"
+
       - name: Deploy via SSH (rsync)
         uses: burnett01/rsync-deployments@7.0.1
         with:
