@@ -6,7 +6,7 @@
 // - Wishlist server-side en tabla `wishlist` + notificacion admin.
 // ============================================================
 
-import { WHATSAPP_URL, FALLBACK_IMAGE } from './src/config.js';
+import { WHATSAPP_URL, FALLBACK_IMAGE } from './src/config.js?v=__BUILD_HASH__';
 import {
   fetchAll,
   createProduct,
@@ -24,14 +24,14 @@ import {
   STYLES,
   STYLE_LABELS,
   isValidStyle
-} from './src/products.js';
+} from './src/products.js?v=__BUILD_HASH__';
 import {
   getSession,
   signInWithPassword,
   sendMagicLink,
   signOut,
   onAuthChange
-} from './src/auth.js';
+} from './src/auth.js?v=__BUILD_HASH__';
 
 const LS_WISHLIST = 'av.wishlist';
 

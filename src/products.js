@@ -1,5 +1,5 @@
-import { supabase } from './supabase.js';
-import { FALLBACK_IMAGE } from './config.js';
+import { supabase } from './supabase.js?v=__BUILD_HASH__';
+import { FALLBACK_IMAGE } from './config.js?v=__BUILD_HASH__';
 
 // ---------- Estilos validos (Fase 3) ----------
 // Debe coincidir con el CHECK constraint en supabase/schema.sql. Si agregas

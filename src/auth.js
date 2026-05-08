@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js';
+import { supabase } from './supabase.js?v=__BUILD_HASH__';
 
 export async function getSession() {
   const { data } = await supabase.auth.getSession();

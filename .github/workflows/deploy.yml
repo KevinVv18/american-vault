@@ -27,19 +27,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Reemplaza __BUILD_HASH__ en index.html por los primeros 7
-      # caracteres del commit SHA. Hace cache-busting automatico:
-      # cada deploy cambia las URLs de styles.css?v=X y app.js?v=X
-      # a un valor unico, asi el browser baja la version nueva en
-      # la siguiente visita sin necesidad de hard-refresh manual.
-      # Combinado con .htaccess que fuerza HTML a no cachear, el
-      # ciclo es: HTML fresh -> nuevas refs -> JS/CSS nuevos.
-      - name: Inject build hash into HTML
+      # Reemplaza __BUILD_HASH__ por los primeros 7 chars del commit SHA
+      # en index.html Y en todos los .js del proyecto. Cache-busting
+      # automatico que cubre TODOS los assets versionados:
+      #   - <link href="styles.css?v=hash">       (HTML)
+      #   - <script src="app.js?v=hash">          (HTML)
+      #   - <script src="src/hero.js?v=hash">     (HTML)
+      #   - import from './src/products.js?v=h'   (dentro del JS)
+      # El ultimo es CRITICO: sin el, app.js nuevo importa products.js
+      # cacheado viejo y truena por exports faltantes (passo de Fase D).
+      # Combinado con .htaccess que fuerza HTML a no cachear, el ciclo
+      # es: HTML fresh -> refs nuevas -> JS/CSS/imports nuevos.
+      - name: Inject build hash
         run: |
           SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
-          sed -i "s/__BUILD_HASH__/${SHA_SHORT}/g" index.html
+          # Excluye .git/.github/node_modules/scripts donde el placeholder
+          # no es relevante (y tampoco se deployan via rsync).
+          find . -type f \( -name "*.html" -o -name "*.js" \) \
+            -not -path "./.git/*" \
+            -not -path "./.github/*" \
+            -not -path "./node_modules/*" \
+            -not -path "./scripts/*" \
+            -exec sed -i "s/__BUILD_HASH__/${SHA_SHORT}/g" {} +
           echo "Cache-bust hash: ${SHA_SHORT}"
-          grep -c "${SHA_SHORT}" index.html | xargs -I{} echo "Replaced {} references in index.html"
+          echo "Files modified:"
+          grep -rl "${SHA_SHORT}" --include="*.html" --include="*.js" \
+            --exclude-dir=.git --exclude-dir=.github \
+            --exclude-dir=node_modules --exclude-dir=scripts . || true
 
       - name: Deploy via SSH (rsync)
         uses: burnett01/rsync-deployments@7.0.1
