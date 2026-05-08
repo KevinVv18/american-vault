@@ -57,7 +57,7 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Jost:wght@300;400;500;600;700&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="styles.css?v=20260423-7" />
+  <link rel="stylesheet" href="styles.css?v=20260423-8" />
 </head>
 <body>
 
@@ -537,6 +537,31 @@
 
   <!-- 8. FOOTNOTE ---------------------------------------------- -->
   <footer class="footnote">
+    <!-- Newsletter capture (D4): captura sin filtros "avisame cuando
+         llegue algo nuevo". Inserta en public.newsletter_subscribers
+         via subscribeNewsletter() — RLS permite insert publico, solo
+         admin puede leer/borrar. Mensaje inline arriba/abajo segun
+         estado (sending / success / error). -->
+    <form class="footnote-newsletter" id="newsletterForm" novalidate>
+      <p class="footnote-newsletter-eyebrow">Llegan piezas nuevas todas las semanas</p>
+      <p class="footnote-newsletter-pitch">Avisame cuando llegue algo nuevo.</p>
+      <div class="footnote-newsletter-row">
+        <label for="newsletterInput" class="visually-hidden">Tu WhatsApp</label>
+        <input
+          id="newsletterInput"
+          name="whatsapp"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel"
+          placeholder="+51 999 888 777"
+          aria-describedby="newsletterMsg"
+          required
+        />
+        <button type="submit" id="newsletterSubmit">Avisame</button>
+      </div>
+      <p class="footnote-newsletter-msg" id="newsletterMsg" role="status" aria-live="polite"></p>
+    </form>
+
     <!-- Marcas que vendemos: presencia tipografica, sin logos para
          no entrar en territorio de "marketplace" — somos curadora. -->
     <p class="footnote-brands">
@@ -730,7 +755,7 @@
   <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/loaders/GLTFLoader.js" />
   <link rel="modulepreload" crossorigin href="https://unpkg.com/three@0.160.1/examples/jsm/environments/RoomEnvironment.js" />
 
-  <script type="module" src="app.js?v=20260423-7"></script>
+  <script type="module" src="app.js?v=20260423-8"></script>
   <script type="module" src="src/hero.js"></script>
 </body>
 </html>

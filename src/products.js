@@ -318,3 +318,33 @@ export function matchesWish(product, wish) {
 export function findMatchesForProduct(product, wishes) {
   return (wishes ?? []).filter((w) => matchesWish(product, w));
 }
+
+// ============================================================
+// Newsletter (Fase D)
+// Captura general "avisame cuando llegue algo nuevo" desde el footer.
+// Sin filtros (vs wishlist que captura intencion especifica).
+// Tabla: public.newsletter_subscribers — RLS:
+//   - insert publico, select/delete solo authenticated.
+// ============================================================
+
+// Suscribe un numero al newsletter. Retorna { alreadySubscribed: bool }.
+// Si el numero ya existe (UNIQUE violation, code 23505), tratamos como
+// exito silencioso — el cliente no necesita saber que ya estaba; le
+// confirmamos igual "estas en la lista".
+export async function subscribeNewsletter(rawWhatsapp, source = 'footer') {
+  const whatsapp = normalizeWhatsapp(rawWhatsapp);
+  if (!whatsapp || whatsapp.replace(/\D/g, '').length < 7) {
+    throw new Error('Numero de WhatsApp invalido.');
+  }
+
+  const { error } = await supabase
+    .from('newsletter_subscribers')
+    .insert({ whatsapp, source });
+
+  if (error) {
+    // 23505 = unique_violation = ya estaba suscrito → silent OK.
+    if (error.code === '23505') return { alreadySubscribed: true };
+    throw error;
+  }
+  return { alreadySubscribed: false };
+}

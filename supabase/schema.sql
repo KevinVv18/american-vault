@@ -64,6 +64,43 @@ create table if not exists public.wishlist (
 create index if not exists wishlist_notified_idx on public.wishlist (notified);
 create index if not exists wishlist_brand_idx    on public.wishlist (brand);
 
+-- ---------- Tabla: newsletter_subscribers (Fase D) ----------
+-- Capture sin filtros del footer: cliente quiere "avisame cuando llegue
+-- algo nuevo" sin especificar marca/precio. Diferencia con wishlist:
+-- wishlist captura intencion de compra (busca X o algo bajo Y precio);
+-- newsletter es presencia general (quiere saber cuando subimos stock).
+create table if not exists public.newsletter_subscribers (
+  id          uuid primary key default gen_random_uuid(),
+  whatsapp    text not null,
+  source      text not null default 'footer',
+  created_at  timestamptz not null default now()
+);
+
+-- whatsapp unico: re-suscripciones del mismo numero hacen no-op (UNIQUE
+-- violation que el frontend trata como "ya estabas en la lista, exito").
+create unique index if not exists newsletter_subscribers_whatsapp_uidx
+  on public.newsletter_subscribers (whatsapp);
+
+alter table public.newsletter_subscribers enable row level security;
+
+drop policy if exists newsletter_public_insert  on public.newsletter_subscribers;
+drop policy if exists newsletter_admin_read     on public.newsletter_subscribers;
+drop policy if exists newsletter_admin_delete   on public.newsletter_subscribers;
+
+-- Cualquiera puede inscribirse (insert); solo admin lee/borra (admin
+-- exporta la lista para mandar broadcast desde su WhatsApp Business).
+create policy newsletter_public_insert
+  on public.newsletter_subscribers for insert
+  with check (true);
+
+create policy newsletter_admin_read
+  on public.newsletter_subscribers for select
+  to authenticated using (true);
+
+create policy newsletter_admin_delete
+  on public.newsletter_subscribers for delete
+  to authenticated using (true);
+
 -- ---------- Trigger updated_at en products ----------
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$

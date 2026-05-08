@@ -306,54 +306,41 @@ if (hero && bagSvg) {
     fill.position.set(0, -2, 2);
     scene.add(fill);
 
-    // --- cargar texturas PBR (paralelo) ---
-    const texLoader = new THREE.TextureLoader();
-    const base = 'assets/3d/handbag/textures/';
-
-    // loadTex: isColor=true -> SRGB (base color). isColor=false -> NoColorSpace
-    // (data maps: normal, metallic, roughness). Lo dejamos explicito para no
-    // depender del default del browser/TextureLoader, que cambia entre
-    // versiones y puede aplicar gamma a datos que deberian estar en linear.
-    const loadTex = (name, isColor) => new Promise((resolve, reject) => {
-      texLoader.load(
-        base + name,
-        (t) => {
-          t.colorSpace = isColor ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-          t.flipY = false; // FBX usa UV no volteadas
-          t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy?.() || 8);
-          resolve(t);
-        },
-        undefined,
-        reject
-      );
+    // --- materiales American Vault (D2: rebrand 3D) ---
+    // Decision de marca: NO usamos texturas PBR del modelo original (cuero
+    // marron + herraje dorado canon "luxury bag generico"). En su lugar,
+    // dos materiales puros que codifican nuestra identidad B&W minimalista:
+    //
+    //   leather  → cuero negro mate, casi sin reflejo del environment.
+    //              Sobre fondo negro la silueta lee por highlights de
+    //              key+rim, no por color del cuero. envMapIntensity bajo
+    //              evita que la sala blanca se "imprima" en el cuero.
+    //
+    //   hardware → champagne sutil (NO oro chillon). 94% metallic +
+    //              roughness baja → reflejos limpios pero discretos.
+    //              envMapIntensity alto: el herraje SI debe capturar
+    //              la sala (es lo que le da el "guino" de movimiento
+    //              cuando la cartera gira).
+    //
+    // Wins de no descargar las 12 WebPs (3 regiones x 4 maps):
+    //   - ~6-8MB menos de transferencia inicial
+    //   - First paint del 3D ~300-500ms mas rapido en mobile 4G
+    //   - Materiales unicos AV (no se confunden con cualquier free model)
+    //
+    // Los archivos en /assets/3d/handbag/textures/ siguen en repo por si
+    // queremos volver a la version texturizada, pero no se piden.
+    const leatherMat = new THREE.MeshStandardMaterial({
+      color:           0x080808,
+      roughness:       0.62,
+      metalness:       0.06,
+      envMapIntensity: 0.42
     });
-
-    // Materiales PBR por region. Las 4 texturas de Substance Painter son
-    // datos validos (base color negro con pespunte claro, metalness casi 0
-    // en cuero y casi 1 en herraje, roughness alto en cuero, bajo en metal).
-    // Dejamos que los mapas manejen metalness/roughness per pixel y solo
-    // ajustamos envMapIntensity para balancear: cuero capta poco reflejo,
-    // herraje mucho.
-    const regions = ['lower', 'metal', 'upper'];
-    const ENV = { lower: 0.55, metal: 1.0, upper: 0.55 };
-    const materials = {};
-    await Promise.all(regions.map(async (r) => {
-      const [map, normalMap, metalnessMap, roughnessMap] = await Promise.all([
-        loadTex(`purse_${r}_Base_color.webp`, true),
-        loadTex(`purse_${r}_normal.webp`,     false),
-        loadTex(`purse_${r}_metallic.webp`,   false),
-        loadTex(`purse_${r}_roughness.webp`,  false)
-      ]);
-      materials[r] = new THREE.MeshStandardMaterial({
-        map,
-        normalMap,
-        metalnessMap,
-        roughnessMap,
-        metalness: 1.0,   // multiplicador del mapa; el mapa decide per pixel
-        roughness: 1.0,
-        envMapIntensity: ENV[r]
-      });
-    }));
+    const hardwareMat = new THREE.MeshStandardMaterial({
+      color:           0xb8a47e,  // champagne suave — luxe sin gritar
+      roughness:       0.18,
+      metalness:       0.94,
+      envMapIntensity: 1.55
+    });
 
     // --- cargar GLB ---
     // Migramos de FBX a GLB (scripts/convert-fbx-to-glb.mjs lo genera offline).
@@ -387,25 +374,20 @@ if (hero && bagSvg) {
     });
     strayLights.forEach((l) => l.parent && l.parent.remove(l));
 
+    // Asignar nuestros 2 materiales por nombre de mesh: la malla 'metal' o
+    // que tenia material 'metal' previo → hardware (champagne). Todo lo
+    // demas (cuero superior + inferior + cualquier mesh sin nombre) → leather
+    // negro mate. Mas simple que las 3 regiones porque ya no nos importa
+    // distinguir 'lower' vs 'upper' (mismo material visual).
     model.traverse((child) => {
       if (!child.isMesh) return;
       child.castShadow = false;
       child.receiveShadow = false;
 
-      const nm = (child.name || '').toLowerCase();
-      let mat = null;
-      if      (nm.includes('lower')) mat = materials.lower;
-      else if (nm.includes('metal')) mat = materials.metal;
-      else if (nm.includes('upper')) mat = materials.upper;
-      // Si el mesh no tiene nombre reconocible, intentamos inferir por
-      // material previo (FBX a veces empaqueta varios submeshes).
-      if (!mat) {
-        const prev = child.material?.name?.toLowerCase?.() || '';
-        if      (prev.includes('lower')) mat = materials.lower;
-        else if (prev.includes('metal')) mat = materials.metal;
-        else if (prev.includes('upper')) mat = materials.upper;
-      }
-      if (mat) child.material = mat;
+      const nm   = (child.name || '').toLowerCase();
+      const prev = child.material?.name?.toLowerCase?.() || '';
+      const isHardware = nm.includes('metal') || prev.includes('metal');
+      child.material = isHardware ? hardwareMat : leatherMat;
     });
 
     // --- centrar y escalar para que entre en el frame ---
@@ -465,9 +447,18 @@ if (hero && bagSvg) {
     const ENTRY_TILT_OFFSET = -0.32;             // cabeceo hacia abajo
     let entryT = 1; // 1 = sin entry; entry baja a 0 y vuelve a 1 con tween
     let lastP = -1;
+    // ---- Drag rotation (D1): se suma a la rotacion Y del scroll ----
+    // El usuario arrastra horizontal → dragRotY crece. Al soltar, decae
+    // suave a 0 con easeOutCubic en 700ms para volver al estado del scroll.
+    // Asi no rompe el storytelling pero permite explorar la pieza.
+    let dragRotY = 0;
+    let dragActive = false;
+    let dragDecayStart = null;
+    let dragDecayFrom = 0;
     function render3D(p) {
       const entryActive = entryT < 1;
-      if (p !== lastP || entryActive) {
+      const dragInfluence = dragActive || dragDecayStart !== null || dragRotY !== 0;
+      if (p !== lastP || entryActive || dragInfluence) {
         // easeOutCubic solo en el ultimo 30% para settling final
         let pe = p;
         if (p > 0.7) {
@@ -480,7 +471,10 @@ if (hero && bagSvg) {
         const entryRotOff  = (1 - entryEase) * ENTRY_ROT_OFFSET;
         const entryTiltOff = (1 - entryEase) * ENTRY_TILT_OFFSET;
 
-        pivot.rotation.y = START + pe * SWEEP + entryRotOff;
+        // Suma dragRotY: scroll + entry + drag (todos se componen sobre la
+        // rotacion base). Drag no afecta tilt/dolly/light orbit (queda
+        // estable lateral) — solo Y.
+        pivot.rotation.y = START + pe * SWEEP + entryRotOff + dragRotY;
         // Dolly-in sutil al cruzar el medio (mas cerca cuando cruza el canto)
         const edge = Math.sin(p * Math.PI); // 0 al inicio/fin, 1 al medio
         camera.position.z = 3.1 - edge * 0.32;
@@ -522,9 +516,10 @@ if (hero && bagSvg) {
           -KEY_BASE.x * sin + KEY_BASE.z * cos
         );
 
-        // Solo cacheamos lastP cuando NO estamos animando entry, asi el
-        // siguiente frame recalcula la rotacion con el nuevo entryT.
-        if (!entryActive) lastP = p;
+        // Solo cacheamos lastP cuando NO hay tween ni drag activo. Asi el
+        // siguiente frame siempre recalcula la rotacion mientras el drag
+        // o el entry estan vivos.
+        if (!entryActive && !dragInfluence) lastP = p;
       }
       renderer.render(scene, camera);
     }
@@ -573,6 +568,99 @@ if (hero && bagSvg) {
       };
       requestAnimationFrame(entryStep);
     }
+
+    // ---- D1: Drag rotation (touch + mouse) ----
+    // CSS aplica touch-action: pan-y al stage para que el browser entienda
+    // que aceptamos pan vertical (scroll de pagina) pero no horizontal.
+    // Asi swipes horizontales son nuestros (rotacion) y verticales pasan
+    // al scroll. En desktop los eventos pointer cubren tanto mouse como
+    // touch sin codigo separado.
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragLastX  = 0;
+    let dragHorizontalLock = false; // se vuelve true cuando confirmamos
+                                     // que el gesto es horizontal (>vertical)
+    const DRAG_PX_PER_RAD = 180;     // sensibilidad: 180px = 1 radian (~57°)
+
+    stage.addEventListener('pointerdown', (e) => {
+      // Solo boton primario en mouse. Touch/pen siempre OK.
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      dragActive = true;
+      dragHorizontalLock = false;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      dragLastX  = e.clientX;
+      // Cancelar cualquier decay en curso — el usuario retomo control.
+      dragDecayStart = null;
+      // pointerCapture: aunque el pointer salga del stage, seguimos
+      // recibiendo eventos hasta el up. Crucial para que un drag rapido
+      // no "pierda" el bag al salir de su area.
+      try { stage.setPointerCapture(e.pointerId); } catch {}
+      stage.classList.add('is-grabbing');
+    });
+
+    stage.addEventListener('pointermove', (e) => {
+      if (!dragActive) return;
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      // Antes de "lockear" el gesto como horizontal, esperamos al menos
+      // 6px de movimiento. Y solo lockeamos si el horizontal domina al
+      // vertical — asi un swipe vertical para scrollear pagina pasa.
+      if (!dragHorizontalLock) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        if (Math.abs(dx) <= Math.abs(dy)) {
+          // Vertical-dominant: el usuario quiere scrollear, no rotar.
+          // Cancelamos el drag y dejamos que el browser maneje el scroll.
+          dragActive = false;
+          stage.classList.remove('is-grabbing');
+          return;
+        }
+        dragHorizontalLock = true;
+      }
+      // Acumulamos rotacion como delta desde el ultimo move (no desde el
+      // start), asi un drag rapido no "rebota" si el usuario cambia direccion.
+      const sampleDx = e.clientX - dragLastX;
+      dragLastX = e.clientX;
+      dragRotY += sampleDx / DRAG_PX_PER_RAD;
+      // Forzar repintado inmediato — render3D detecta dragInfluence.
+      render3D(state.progress);
+      // Mientras el gesto sea horizontal-locked, prevenimos default
+      // (algunos browsers todavia intentan scroll horizontal en touch
+      // pads de tablets aunque touch-action lo limite).
+      e.preventDefault();
+    }, { passive: false });
+
+    const endDrag = (e) => {
+      if (!dragActive) return;
+      dragActive = false;
+      stage.classList.remove('is-grabbing');
+      try { stage.releasePointerCapture(e.pointerId); } catch {}
+      // Si rotaron al menos un poco, lanzar decay. Si fue un click sin
+      // mover, dragRotY sigue en 0 y no necesitamos decay.
+      if (Math.abs(dragRotY) > 0.001) {
+        dragDecayStart = performance.now();
+        dragDecayFrom = dragRotY;
+        const DECAY_DURATION = 700;
+        const decayStep = () => {
+          if (dragActive || dragDecayStart === null) return; // user reapropio drag
+          const t = Math.min(1, (performance.now() - dragDecayStart) / DECAY_DURATION);
+          const eased = 1 - Math.pow(1 - t, 3);
+          dragRotY = dragDecayFrom * (1 - eased);
+          render3D(state.progress);
+          if (t < 1) {
+            requestAnimationFrame(decayStep);
+          } else {
+            dragDecayStart = null;
+            dragRotY = 0;
+            // Un render final con 0 para asegurar pose limpia.
+            render3D(state.progress);
+          }
+        };
+        requestAnimationFrame(decayStep);
+      }
+    };
+    stage.addEventListener('pointerup',     endDrag);
+    stage.addEventListener('pointercancel', endDrag);
 
     // debug-only: en dev, expose para inspeccion desde consola.
     // se deja condicionado a hostname local para no filtrar en prod.

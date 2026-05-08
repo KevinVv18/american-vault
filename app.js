@@ -14,6 +14,7 @@ import {
   deleteProduct,
   uploadImages,
   subscribeChanges,
+  subscribeNewsletter,
   createWishlistEntry,
   listWishlist,
   markWishlistNotified,
@@ -181,6 +182,12 @@ function cacheElements() {
   elements.originCTA            = document.getElementById('originCTA');
   elements.footerWhatsapp       = document.getElementById('footerWhatsapp');
 
+  // Newsletter (Fase D)
+  elements.newsletterForm       = document.getElementById('newsletterForm');
+  elements.newsletterInput      = document.getElementById('newsletterInput');
+  elements.newsletterSubmit     = document.getElementById('newsletterSubmit');
+  elements.newsletterMsg        = document.getElementById('newsletterMsg');
+
   // Filter drawer
   elements.drawer               = document.getElementById('filterDrawer');
   elements.drawerScrim          = document.getElementById('drawerScrim');
@@ -306,6 +313,13 @@ function bindEvents() {
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     });
+  }
+
+  // Newsletter form (Fase D): submit captura whatsapp y lo manda a
+  // Supabase. Manejamos 3 estados visuales: sending, success, error.
+  // En success limpiamos el input y mostramos confirmacion editorial.
+  if (elements.newsletterForm) {
+    elements.newsletterForm.addEventListener('submit', handleNewsletterSubmit);
   }
 
   // Flash banner close (delegado: solo hay un boton dentro)
@@ -484,6 +498,63 @@ function bindEvents() {
       e.preventDefault();
     }
   });
+}
+
+// ---------- Newsletter (Fase D) ----------
+// Submit del form en footer: insert en newsletter_subscribers via
+// subscribeNewsletter(). 3 estados visuales en el msg inline:
+//   sending  → "Enviando..." (button disabled)
+//   success  → "Listo. Te avisaremos cuando llegue lo nuevo." + reset input
+//   error    → mensaje del error (numero invalido, network, etc.)
+// alreadySubscribed se trata como exito tambien (mismo mensaje, no
+// queremos hacer sentir mal al cliente que se suscribio dos veces).
+async function handleNewsletterSubmit(e) {
+  e.preventDefault();
+  const msgEl = elements.newsletterMsg;
+  const submitBtn = elements.newsletterSubmit;
+  const input = elements.newsletterInput;
+  if (!input || !msgEl) return;
+
+  const whatsapp = input.value.trim();
+  if (!whatsapp) {
+    setNewsletterMessage('Ingresa tu WhatsApp.', 'error');
+    input.focus();
+    return;
+  }
+
+  if (submitBtn) submitBtn.disabled = true;
+  const originalLabel = submitBtn?.textContent;
+  if (submitBtn) submitBtn.textContent = 'Enviando...';
+  setNewsletterMessage('', null);
+
+  try {
+    const result = await subscribeNewsletter(whatsapp, 'footer');
+    setNewsletterMessage(
+      result.alreadySubscribed
+        ? 'Ya estabas en la lista. Te avisaremos.'
+        : 'Listo. Te avisaremos cuando llegue lo nuevo.',
+      'success'
+    );
+    elements.newsletterForm.reset();
+  } catch (err) {
+    setNewsletterMessage(
+      `No pudimos guardarlo: ${err?.message ?? 'intenta de nuevo'}.`,
+      'error'
+    );
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      if (originalLabel) submitBtn.textContent = originalLabel;
+    }
+  }
+}
+
+function setNewsletterMessage(text, kind) {
+  if (!elements.newsletterMsg) return;
+  elements.newsletterMsg.classList.remove('is-success', 'is-error');
+  if (kind === 'success') elements.newsletterMsg.classList.add('is-success');
+  if (kind === 'error')   elements.newsletterMsg.classList.add('is-error');
+  elements.newsletterMsg.textContent = text;
 }
 
 function setTopWhatsapp() {
