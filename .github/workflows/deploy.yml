@@ -76,6 +76,7 @@ jobs:
             --exclude=package.json
             --exclude=package-lock.json
             --exclude=README.md
+            --exclude=CLAUDE.md
             --exclude=.gitignore
             --exclude=temp_blog_html.txt
             --exclude=*.fbx
