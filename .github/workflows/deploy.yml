@@ -27,6 +27,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Valida sintaxis de TODO el JS antes de deployar. node --check no
+      # ejecuta el codigo, solo parsea. Si algo no compila, el deploy se
+      # corta aca y produccion queda intacta (no hay staging: push a main
+      # ES produccion, este es el unico guardrail).
+      - name: Verify JS syntax
+        run: |
+          for f in app.js src/*.js; do
+            node --check "$f"
+          done
+          echo "Sintaxis OK"
+
       # Reemplaza __BUILD_HASH__ por los primeros 7 chars del commit SHA
       # en index.html Y en todos los .js del proyecto. Cache-busting
       # automatico que cubre TODOS los assets versionados:
@@ -81,6 +92,7 @@ jobs:
             --exclude=temp_blog_html.txt
             --exclude=*.fbx
             --exclude=3D/
+            --exclude=AV?LOGO/
           path: ./
           remote_path: /home/u567580447/domains/american-vault.com/public_html/
           remote_host: 89.116.115.11

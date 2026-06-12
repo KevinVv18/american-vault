@@ -71,7 +71,7 @@ american vault/
 ├── index.html              # SPA completa (~760 líneas): todas las secciones + modales
 ├── app.js                  # Lógica principal (~2600 líneas), ver §6
 ├── styles.css              # Todos los estilos (~3000 líneas), secciones con banners "==="
-├── .htaccess               # Cache headers Apache (ver §12 — CRÍTICO)
+├── .htaccess               # Cache headers Apache (ver §10 — CRÍTICO)
 ├── CLAUDE.md               # Este documento (excluido del deploy)
 ├── src/
 │   ├── config.js           # Constantes públicas: SUPABASE_URL, ANON_KEY, WHATSAPP, FALLBACK_IMAGE
@@ -81,6 +81,7 @@ american vault/
 │   └── hero.js             # Scrollytelling 3D del hero (módulo autoejecutable, sin exports)
 ├── supabase/
 │   ├── schema.sql                          # Schema canónico completo (fresh installs solo necesitan esto)
+│   ├── migration_stock_image.sql           # Migración: stock_image_url (Fase A, anterior a phase3)
 │   ├── migration_phase3_images_style.sql   # Migración: images[]/image_paths[]/style + backfill
 │   └── migration_phase4_newsletter.sql     # Migración: tabla newsletter_subscribers
 ├── scripts/                # (excluido del deploy)
@@ -92,7 +93,9 @@ american vault/
 │   └── 3d/handbag/         # handbag.glb + handbag.fbx + textures/*.webp (12 PBR maps)
 ├── carteras/               # Fotos caseras de productos (fuente del seed; excluido del deploy)
 ├── stock/                  # default-bag.jpg (fallback) + futuras fotos editoriales
-├── .github/workflows/deploy.yml  # Pipeline de deploy (ver §12)
+├── 3D/                     # Fuentes 3D originales (FBX/Blender/texturas) — gitignored, excluido del deploy
+├── AV LOGO/                # Fuentes PNG del logo — no las usa el sitio, excluido del deploy
+├── .github/workflows/deploy.yml  # Pipeline de deploy (ver §10)
 ├── .env.example            # Plantilla: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
 └── package.json            # Solo devDependencies para scripts locales
 ```
@@ -222,6 +225,7 @@ lo consume el admin).
 ### Migraciones — cuándo correr qué
 
 - **Instalación desde cero**: solo `supabase/schema.sql` (lo incluye todo, idempotente).
+- **DB pre-Fase A**: correr `migration_stock_image.sql` (agrega `stock_image_url`) ANTES que phase3.
 - **DB pre-Fase 3**: correr `migration_phase3_images_style.sql` (agrega
   images[]/image_paths[]/style + backfill desde columnas legacy).
 - **DB pre-Fase D**: correr `migration_phase4_newsletter.sql`.
@@ -288,9 +292,11 @@ bucket a `/storage/v1/render/image/public/` con widths 400/600/900/1200 q75
 push a main
   → GitHub Actions (.github/workflows/deploy.yml)
     1. checkout
-    2. "Inject build hash": sed reemplaza __BUILD_HASH__ por el SHA corto (7 chars)
+    2. "Verify JS syntax": node --check sobre app.js y src/*.js — si algo no
+       parsea, el deploy se corta y producción queda intacta (único guardrail)
+    3. "Inject build hash": sed reemplaza __BUILD_HASH__ por el SHA corto (7 chars)
        en TODOS los .html y .js (excluye .git/.github/node_modules/scripts)
-    3. rsync -avz --delete por SSH a Hostinger
+    4. rsync -avz --delete por SSH a Hostinger
        host 89.116.115.11 : puerto 65002 : user u567580447
        destino: /home/u567580447/domains/american-vault.com/public_html/
 ```
@@ -299,7 +305,9 @@ push a main
 - ⚠️ **NUNCA** tocar `/home/u567580447/public_html/` ni `.../domains/dakagency.net/`
   — pertenecen a DAK Agency.
 - Excluidos del deploy: `.git .github .claude node_modules scripts supabase
-  referencias carteras dist .env* package*.json README.md CLAUDE.md *.fbx 3D/`.
+  referencias carteras dist .env* package*.json README.md CLAUDE.md *.fbx 3D/
+  AV LOGO/` (este último vía patrón `AV?LOGO/` — el espacio literal rompería
+  el parseo de argumentos de rsync).
 
 ### Cache-busting de 3 capas (resuelve "clientes ven versión vieja")
 
