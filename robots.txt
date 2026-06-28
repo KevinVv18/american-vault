@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://american-vault.com/sitemap.xml
