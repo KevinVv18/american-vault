@@ -56,13 +56,11 @@
     .bp-actions a { text-decoration: none; color: #6b6b70; }
     .bp-actions a:hover { color: #0d0d0f; }
     .bp-actions .bp-wa { color: #0d0d0f; }
-    .bp-hero { max-width: 1180px; margin: 0 auto; padding: 44px 20px 6px; }
-    .bp-crumb { font-size: .76rem; color: #9a9aa0; letter-spacing: .04em; margin: 0 0 16px; }
+    .bp-crumb { text-align: center; font-size: .76rem; color: #9a9aa0; letter-spacing: .04em; margin: 0 0 14px; }
     .bp-crumb a { text-decoration: none; color: #9a9aa0; }
     .bp-crumb a:hover { color: #0d0d0f; }
-    .bp-hero h1 { font-family: 'Fraunces', serif; font-weight: 400; font-size: clamp(2rem, 6vw, 3.2rem); margin: 0 0 16px; letter-spacing: -.01em; line-height: 1.05; }
-    .bp-intro { max-width: 700px; color: #5d5d63; line-height: 1.75; font-size: 1rem; margin: 0 0 8px; }
-    .bp-count { font-size: .76rem; color: #0d0d0f; letter-spacing: .08em; margin: 14px 0 0; text-transform: uppercase; }
+    .page-header h1 { font-family: 'Fraunces', serif; }
+    .bp-intro { max-width: 640px; margin: 18px auto 0; color: #5d5d63; line-height: 1.75; font-size: 1rem; }
     .brand-empty { color: #5d5d63; line-height: 1.7; padding: 30px 0; }
     .brand-empty a { color: #0d0d0f; }
     .bp-cross { max-width: 1180px; margin: 0 auto; padding: 10px 20px 64px; }
@@ -84,16 +82,19 @@
     </nav>
   </header>
 
-  <section class="bp-hero">
+  <section class="page-header">
+    <div class="page-header-rule" aria-hidden="true">
+      <span class="page-header-rule-line"></span>
+      <img class="page-header-rule-mark" src="/assets/brand/icon-av-black.svg" alt="" width="223" height="260" decoding="async" />
+      <span class="page-header-rule-line"></span>
+    </div>
     <p class="bp-crumb"><a href="/">Inicio</a> › Carteras Guess</p>
+    <p class="tagline">Carteras por marca</p>
     <h1>Carteras Guess</h1>
     <p class="bp-intro">
-      Carteras <strong>Guess originales</strong>, importadas desde tiendas oficiales de Estados Unidos y elegidas a mano para ti. En American Vault cada pieza es auténtica y casi siempre <strong>única</strong>: una unidad por modelo. Crossbody, totes, satchels y más — cuando una se va, rara vez vuelve.
+      Carteras <strong>Guess originales</strong>, importadas desde tiendas oficiales de Estados Unidos y elegidas a mano. Cada pieza es auténtica y casi siempre <strong>única</strong> — una unidad por modelo. Cuando una se va, rara vez vuelve. Mira las disponibles ahora y resérvala por WhatsApp antes de que alguien más la lleve. Entregas en todo el Perú.
     </p>
-    <p class="bp-intro">
-      Mira las Guess disponibles ahora mismo y resérvala por WhatsApp antes de que alguien más la lleve. Entregas en todo el Perú.
-    </p>
-    <p class="bp-count" id="brandCount">Cargando catálogo…</p>
+    <p class="count" id="brandCount">Cargando catálogo…</p>
   </section>
 
   <main class="catalog">
